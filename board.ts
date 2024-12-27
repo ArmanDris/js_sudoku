@@ -155,15 +155,89 @@ function is_board_solved(board: Board): boolean {
 	}
 
 	// Check all 9 sub-grids
-	check_sub_grid(0, 0);
-	check_sub_grid(0, 3);
-	check_sub_grid(0, 6);
-	check_sub_grid(3, 0);
-	check_sub_grid(3, 3);
-	check_sub_grid(3, 6);
-	check_sub_grid(6, 0);
-	check_sub_grid(6, 3);
-	check_sub_grid(6, 6);
+	if (!check_sub_grid(0, 0)) return false;
+	if (!check_sub_grid(0, 3)) return false;
+	if (!check_sub_grid(0, 6)) return false;
+	if (!check_sub_grid(3, 0)) return false;
+	if (!check_sub_grid(3, 3)) return false;
+	if (!check_sub_grid(3, 6)) return false;
+	if (!check_sub_grid(6, 0)) return false;
+	if (!check_sub_grid(6, 3)) return false;
+	if (!check_sub_grid(6, 6)) return false;
+
+	return true;
+}
+
+// True if the board does not violate any
+// constraint. DOES NOT MEAN BOARD IS
+// SOLVED. Some Box's may be empty (0)
+function check_constraints(b: Board) {
+	// True if the given array already contains value
+	function does_arr_already_contain(arr: Array<Box>, value: Box): boolean {
+		for (const e of arr) {
+			if (e === value) {
+				return true;
+			}
+		}
+		return false;
+	}
+	// Check that in each row there is
+	// no duplicate, non 0 values
+	for (let y = 0; y < 9; y++) {
+		const row: Array<Box> = [];
+		for (let x = 0; x < 9; x++) {
+			const val = get_box(b, x, y);
+			if (val === 0) continue;
+
+			// If val is already in this row return false
+			if (does_arr_already_contain(row, val)) return false;
+
+			row.push(val);
+		}
+	}
+	// Check that in each column there is no duplicate non 0 values
+	for (let x = 0; x < 9; x++) {
+		const column: Array<Box> = [];
+		for (let y = 0; y < 9; y++) {
+			const val = get_box(b, x, y);
+			if (val === 0) continue;
+
+			if (does_arr_already_contain(column, val)) return false;
+
+			column.push(val);
+		}
+	}
+
+	// Check if a 3x3 grid whose top left corner
+	// sits at offset_x, offset_y has any duplicates
+	// of the letters 1-9. For safety only 0, 3, and
+	// 6 are allowed for offset_x and offset_y.
+	function check_sub_grid(offset_x: Box, offset_y: Box): boolean {
+		if (![0, 3, 6].includes(offset_x) || ![0, 3, 6].includes(offset_y)) {
+			throw Error("Invalid offset_x/offset_y for check_sub_grid");
+		}
+
+		const sub_grid: Array<Box> = [];
+		for (let y = offset_y; y < offset_y + 3; y++) {
+			for (let x = offset_x; x < offset_x + 3; x++) {
+				const val = get_box(b, x, y);
+				if (val === 0) continue;
+				if (does_arr_already_contain(sub_grid, val)) return false;
+				sub_grid.push(val);
+			}
+		}
+		return true;
+	}
+
+	if (!check_sub_grid(0, 0)) return false;
+	if (!check_sub_grid(0, 3)) return false;
+	if (!check_sub_grid(0, 6)) return false;
+	if (!check_sub_grid(3, 0)) return false;
+	if (!check_sub_grid(3, 3)) return false;
+	if (!check_sub_grid(3, 6)) return false;
+	if (!check_sub_grid(6, 0)) return false;
+	if (!check_sub_grid(6, 3)) return false;
+	if (!check_sub_grid(6, 6)) return false;
 
 	return true;
 }
@@ -185,9 +259,12 @@ function print_board(board: Board) {
 	console.log("-------------------------");
 }
 
-if (import.meta.main) {
-	print_board(new_board());
-}
-
-export { get_box, is_board_solved, new_board, print_board, set_box };
+export {
+	check_constraints,
+	get_box,
+	is_board_solved,
+	new_board,
+	print_board,
+	set_box,
+};
 export type { Board, Box };
