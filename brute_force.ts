@@ -7,13 +7,7 @@
 // through all possible board states from index
 // 0 to index.
 
-import {
-	get_box,
-	is_board_solved,
-	new_board,
-	print_board,
-	set_box,
-} from "./board.ts";
+import { new_board } from "./board.ts";
 import type { Board } from "./board.ts";
 
 // Increments the board state by one. This

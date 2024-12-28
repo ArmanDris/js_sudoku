@@ -171,7 +171,7 @@ function is_board_solved(board: Board): boolean {
 // True if the board does not violate any
 // constraint. DOES NOT MEAN BOARD IS
 // SOLVED. Some Box's may be empty (0)
-function check_constraints(b: Board) {
+function check_constraints(b: Board): boolean {
 	// True if the given array already contains value
 	function does_arr_already_contain(arr: Array<Box>, value: Box): boolean {
 		for (const e of arr) {
