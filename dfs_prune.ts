@@ -1,8 +1,5 @@
-import { check_constraints, new_board, print_board } from "./board.ts";
+import { check_constraints, new_board } from "./board.ts";
 import type { Board, Box } from "./board.ts";
-
-const solutions: Array<Board> = [];
-let failures: number = 0;
 
 function shuffle_array(arr: Array<Box>) {
 	arr.sort(() => Math.random() - 0.5);
@@ -26,9 +23,18 @@ function next_zero_index(b: Board): number {
 //                      identical.
 function dfs_prune(
 	b: Board = new_board(),
+	stop_number: number = 1,
+	randomize_solutions: boolean = true,
+): Array<Board> {
+	return _dfs_prune_internal(b, stop_number, randomize_solutions, []);
+}
+
+function _dfs_prune_internal(
+	b: Board,
 	stop_number: number,
 	randomize_solutions: boolean,
-): Array<Board> {
+	solutions: Array<Board>,
+) {
 	if (solutions.length >= stop_number) return solutions;
 
 	const domain: Array<Box> = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -46,10 +52,9 @@ function dfs_prune(
 	for (const e of domain) {
 		b[next_index] = e;
 		if (check_constraints(b)) {
-			dfs_prune(b, stop_number, randomize_solutions);
-		} else {
-			failures += 1;
+			_dfs_prune_internal(b, stop_number, randomize_solutions, solutions);
 		}
+		// Invalid assignment, undo and return
 		b[next_index] = 0;
 	}
 	return solutions;

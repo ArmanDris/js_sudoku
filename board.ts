@@ -84,6 +84,13 @@ type Board = [
 	Box,
 ];
 
+function create_board(arr: Array<Box>): Board {
+	if (arr.length !== 81) {
+		throw Error("To create a board the array must be length 81");
+	}
+	return arr as Board;
+}
+
 function new_board(): Board {
 	return new Array(81).fill(0) as Board;
 }
@@ -252,7 +259,9 @@ function print_board(board: Board) {
 			if (x % 3 == 0) {
 				row += "| ";
 			}
-			row += board[y * 9 + x] + " ";
+			let char: Box | string = get_box(board, x, y);
+			if (char === 0) char = " ";
+			row += char + " ";
 		}
 		console.log(row + "|");
 	}
@@ -261,6 +270,7 @@ function print_board(board: Board) {
 
 export {
 	check_constraints,
+	create_board,
 	get_box,
 	is_board_solved,
 	new_board,
