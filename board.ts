@@ -95,12 +95,20 @@ function new_board(): Board {
 	return new Array(81).fill(0) as Board;
 }
 
+/**
+ * Returns a new board with the square at x, y set to value.
+ * The top left corner is considered 0, 0.
+ */
 function set_box(board: Board, x: number, y: number, value: Box): Board {
 	const new_board = [...board] as Board;
 	new_board[y * 9 + x] = value;
 	return new_board;
 }
 
+/**
+ * Returns the value at the given x,y position on the board.
+ * The top left corner is considered 0,0.
+ */
 function get_box(board: Board, x: number, y: number): Box {
 	return board[y * 9 + x];
 }

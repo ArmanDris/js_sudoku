@@ -19,7 +19,7 @@ function next_zero_index(b: Board): number {
 //              there are 6.7x10^(21) solutions total.
 // randomize_solutions: whether to randomize the numbers we
 //                      attempt. When this is false the
-//                      first half of most board will be
+//                      first half of most boards will be
 //                      identical.
 function dfs_prune(
 	b: Board = new_board(),

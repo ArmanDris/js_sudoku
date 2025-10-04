@@ -40,7 +40,7 @@ function inc_state(b: Board, max_index: number): boolean {
 	return true;
 }
 // Make random changes to the board until we have
-// exaustively search all posibilities for solutions
+// exaustively searched all posibilities for solutions
 function brute_force_solve(max_index: number = 8) {
 	let counter = 1;
 	const board = new_board().fill(1) as Board;
@@ -55,7 +55,7 @@ function brute_force_solve(max_index: number = 8) {
 }
 
 if (import.meta.main) {
-	console.log("Brute forcing the first row of the table (index 8)");
+	console.log("Brute forcing the first row of the table (indexes 0-8)");
 	console.time("brute_force_search");
 	brute_force_solve(8);
 	console.timeEnd("brute_force_search");
