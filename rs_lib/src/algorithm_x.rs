@@ -1,13 +1,13 @@
 use crate::board::Board;
 
 struct ConstraintTable {
-  table: [[bool; 243]; 728],
+  table: [[bool; 242]; 729],
 }
 
 impl Default for ConstraintTable {
   fn default() -> Self {
     Self {
-      table: [[false; 243]; 728],
+      table: [[false; 242]; 729],
     }
   }
 }
@@ -28,7 +28,7 @@ impl ConstraintType {
   }
 }
 
-/// This function is responsible for mapping all 243 constraints
+/// This function is responsible for mapping all 242 constraints
 /// to a predicable index.
 ///
 /// Describing the method with words sucks. This writeup:
@@ -53,9 +53,7 @@ fn map_constraint_to_column_idx(
 /// Generates a row in the constraint table using the choices represented by
 /// the board parameter.
 /// These constraints take up the first 81 indexes in the constraint table
-fn generate_constraint_row(board: &Board) -> [bool; 81] {
-  let mut constraint_section = [false; 81];
-
+fn fill_row_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
   for row_idx in 0..9 {
     let board_row = board.get_row(row_idx);
     for cell_idx in 0..9 {
@@ -63,17 +61,13 @@ fn generate_constraint_row(board: &Board) -> [bool; 81] {
       if board_row.contains(&required_number) {
         let index =
           map_constraint_to_column_idx(ConstraintType::Row, row_idx, cell_idx);
-        constraint_section[index] = true;
+        constraint_row[index] = true;
       }
     }
   }
-
-  constraint_section
 }
 
-fn generate_constraint_column(board: &Board) -> [bool; 81] {
-  let mut constraint_section = [false; 81];
-
+fn fill_column_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
   for column_idx in 0..9 {
     let board_column = board.get_column(column_idx);
     for cell_idx in 0..9 {
@@ -84,14 +78,62 @@ fn generate_constraint_column(board: &Board) -> [bool; 81] {
           column_idx,
           cell_idx,
         );
-        constraint_section[index] = true;
+        constraint_row[index] = true;
       }
     }
   }
-  constraint_section
 }
 
-pub fn launch_algorithm_x(board: &Board) -> Board {
+/// The sub grid constraints take up index 161 to 242
+/// The first nine index'es represent whether the top
+/// left sub grid contains each number. The next
+/// nine indexes represent whether the top middle sub
+/// grid contain each number. Following this pattern
+/// the fourth set of nine indexes would represent whether
+/// the left middle sub grid has each number.
+fn fill_sub_grid_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
+  for sub_grid_y_start in (0..9).step_by(3) {
+    for sub_grid_x_start in (0..9).step_by(3) {
+      let mut sub_grid_numbers: Vec<i32> = vec![];
+      // Add row 1
+      sub_grid_numbers.push(board.get(sub_grid_y_start, sub_grid_x_start));
+      sub_grid_numbers.push(board.get(sub_grid_y_start, sub_grid_x_start + 1));
+      sub_grid_numbers.push(board.get(sub_grid_y_start, sub_grid_x_start + 2));
+      // Add row 2
+      sub_grid_numbers.push(board.get(sub_grid_y_start + 1, sub_grid_x_start));
+      sub_grid_numbers
+        .push(board.get(sub_grid_y_start + 1, sub_grid_x_start + 1));
+      sub_grid_numbers
+        .push(board.get(sub_grid_y_start + 1, sub_grid_x_start + 2));
+      // Add row 3
+      sub_grid_numbers.push(board.get(sub_grid_y_start + 2, sub_grid_x_start));
+      sub_grid_numbers
+        .push(board.get(sub_grid_y_start + 2, sub_grid_x_start + 1));
+      sub_grid_numbers
+        .push(board.get(sub_grid_y_start + 2, sub_grid_x_start + 2));
+
+      for cell_idx in 0..9 {
+        let required_number = cell_idx as i32 + 1;
+        if sub_grid_numbers.contains(&required_number) {
+          let index = map_constraint_to_column_idx(
+            ConstraintType::SubGrid,
+            sub_grid_y_start + (sub_grid_x_start / 3),
+            cell_idx,
+          );
+          constraint_row[index] = true;
+        }
+      }
+    }
+  }
+}
+
+pub fn fill_constraint_table_row(board: &Board, row: &mut [bool; 242]) {
+  fill_row_constraints(board, row);
+  fill_column_constraints(board, row);
+  fill_sub_grid_constraints(board, row);
+}
+
+pub fn launch_algorithm_x(board: &mut Board) -> Board {
   // Convert to exact cover problem
 
   // Constraints:
@@ -99,16 +141,38 @@ pub fn launch_algorithm_x(board: &Board) -> Board {
   //  - all columns must contain 1-9 (81)
   //  - each subgrid must contain 1-9 (81)
 
-  // 243 constraints
+  // 242 constraints
 
   // Choices:
   //  - each cell has a choice between 1-9
 
   // 728 choices
 
-  // In total the table will have 243 * 728 = 176 904 cells
-  generate_constraint_row(board);
-  generate_constraint_column(board);
+  // In total the table will have 242 * 728 = 176 176 cells
+
+  let mut constraint_table = ConstraintTable::default().table;
+
+  let mut current_constraint_row = 0;
+
+  for col_idx in 0..9 {
+    for row_idx in 0..9 {
+      for value in 1..10 {
+        // Here we need to get the correct row from the constraint table as a slice
+        // Then we need to create a board with the specified choice,
+        //  - eg for the first index that would be a board with a 1 at 0, 0
+        // Then we need to call `fill_constraint_table_row` with the constraint table slice and the board representing the choice
+        let constraint_row = &mut constraint_table[current_constraint_row];
+        board.set(col_idx, row_idx, value);
+        fill_constraint_table_row(board, constraint_row);
+        current_constraint_row += 1;
+      }
+    }
+  }
+
+  for row in constraint_table {
+    println!("{:?}", &row[0..5]);
+  }
+
   Board::from_board(board)
 }
 
@@ -126,9 +190,10 @@ mod tests {
   fn on_an_empty_board_it_returns_the_correct_constraints() {
     let board = Board::new();
 
-    let constraints_row = generate_constraint_row(&board);
+    let mut constraint_row = [false; 242];
+    fill_row_constraints(&board, &mut constraint_row);
 
-    let all_false = constraints_row
+    let all_false = constraint_row
       .iter()
       .all(|element| -> bool { element == &false });
 
@@ -143,7 +208,8 @@ mod tests {
     board.set(2, 0, 3);
     board.set(3, 0, 4);
 
-    let constraint_row = generate_constraint_row(&board);
+    let mut constraint_row = [false; 242];
+    fill_row_constraints(&board, &mut constraint_row);
 
     let first_four_true = &constraint_row[0..4]
       .iter()
@@ -158,7 +224,6 @@ mod tests {
 
   #[test]
   fn correctly_resolves_two_rows() {
-    // fourth row will be from index [3*9, 4*9)
     let mut board = Board::new();
     board.set(0, 3, 5);
     board.set(4, 3, 6);
@@ -170,17 +235,19 @@ mod tests {
     board.set(2, 5, 5);
     board.set(3, 5, 8);
 
-    let fourth_row_section_of_constraints =
-      &generate_constraint_row(&board)[27..36];
+    let mut constraint_row = [false; 242];
+    fill_row_constraints(&board, &mut constraint_row);
+
+    // fourth row will be from index [3*9, 4*9)
+    let fourth_row_section_of_constraints = &constraint_row[27..36];
     let expected_fourth_row =
       [false, false, false, false, true, true, true, true, false];
     assert_eq!(fourth_row_section_of_constraints, expected_fourth_row);
 
-    let sixth_row_of_section_of_constraints =
-      &generate_constraint_row(&board)[45..54];
+    let sixth_row_section_of_constraints = &constraint_row[45..54];
     let expected_sixth_row =
       [true, false, false, true, true, false, false, true, false];
-    assert_eq!(sixth_row_of_section_of_constraints, expected_sixth_row);
+    assert_eq!(sixth_row_section_of_constraints, expected_sixth_row);
   }
 
   // ==========
@@ -189,8 +256,9 @@ mod tests {
   #[test]
   fn test_no_false_positives() {
     let board = Board::new();
-    let constraint_section = generate_constraint_column(&board);
-    let all_false = constraint_section
+    let mut constraint_column = [false; 242];
+    fill_column_constraints(&board, &mut constraint_column);
+    let all_false = constraint_column
       .iter()
       .all(|element| -> bool { element == &false });
     assert!(all_false);
@@ -199,27 +267,234 @@ mod tests {
   #[test]
   fn test_detects_first_column_constraints() {
     let mut board = Board::new();
-    let constraint_section = generate_constraint_column(&board);
-    board.set(3, 0, 9);
-    board.set(3, 0, 8);
-    board.set(3, 0, 1);
+    board.set(0, 3, 9);
+    board.set(0, 0, 8);
+    board.set(0, 8, 1);
 
-    let first_col_slice = &constraint_section[0..9];
+    let mut constraint_row = [false; 242];
+    fill_column_constraints(&board, &mut constraint_row);
 
-    // Found a serious bug. Each generate_constraint_... function returns an array of length
-    // 81. But the offset will calculate indexes way farther than that. So for this it just
-    // tries to write way past where it should, and we get all false.
-    //
-    // To fix this I should first create the entire 243 length row as the caller and then pass it in for the function to write on.
-    // This will be way more efficent to because then i just need to create/write each constraint column once.
+    let offset = ConstraintType::Column.get_offset();
+    let first_col_slice = &constraint_row[offset..(offset + 9)];
+
     let expected_first_column_constraints =
       [true, false, false, false, false, false, false, true, true];
     assert_eq!(first_col_slice, expected_first_column_constraints);
   }
 
   #[test]
-  fn test_detects_two_random_column_constraints() {}
+  fn test_detects_two_random_column_constraints() {
+    let mut board = Board::new();
+    board.set(2, 1, 1);
+    board.set(2, 2, 2);
+    board.set(2, 3, 5);
+
+    board.set(8, 6, 4);
+    board.set(8, 7, 6);
+    board.set(8, 8, 7);
+
+    let mut column_constraints = [false; 242];
+    fill_column_constraints(&board, &mut column_constraints);
+
+    let column_two_offset = ConstraintType::Column.get_offset() + (9 * 2);
+    let column_two_constraints =
+      &column_constraints[column_two_offset..(column_two_offset + 9)];
+
+    let expected_column_two_constraints =
+      [true, true, false, false, true, false, false, false, false];
+    assert_eq!(column_two_constraints, expected_column_two_constraints);
+
+    let column_eight_offset = ConstraintType::Column.get_offset() + (9 * 8);
+    let column_eight_constraints =
+      &column_constraints[column_eight_offset..(column_eight_offset + 9)];
+
+    let expected_column_eight_constraints =
+      [false, false, false, true, false, true, true, false, false];
+    assert_eq!(column_eight_constraints, expected_column_eight_constraints);
+  }
 
   #[test]
-  fn test_detects_all_constraints_satisfied() {}
+  fn test_detects_sub_grid_constraints() {
+    let mut board = Board::new();
+    // Set the top left sub grid
+    board.set(0, 0, 1);
+    board.set(1, 1, 2);
+    board.set(2, 2, 5);
+    board.set(1, 2, 4);
+    board.set(2, 0, 9);
+    board.set(1, 0, 1);
+    // | 1 | 1 | 9 |
+    // |   | 2 |   |
+    // | 4 |   | 5 |
+
+    // Set the middle subgrid
+    board.set(3, 3, 9);
+    board.set(4, 3, 5);
+    board.set(5, 3, 1);
+    board.set(4, 4, 1);
+    board.set(5, 4, 3);
+    board.set(3, 5, 4);
+    // | 9 | 5 | 1 |
+    // |   | 1 | 3 |
+    // | 4 |   |   |
+
+    // Set the bottom right subgrid
+    board.set(6, 6, 2);
+    board.set(7, 6, 5);
+    board.set(8, 6, 6);
+    board.set(6, 7, 8);
+    board.set(7, 7, 7);
+    board.set(8, 7, 4);
+    board.set(6, 8, 3);
+    board.set(7, 8, 9);
+    board.set(8, 8, 9);
+    // | 2 | 5 | 6 |
+    // | 8 | 7 | 4 |
+    // | 3 | 9 | 9 |
+
+    let top_left_offset = ConstraintType::SubGrid.get_offset();
+    let mut sub_grid_constraints = [false; 242];
+    fill_sub_grid_constraints(&board, &mut sub_grid_constraints);
+
+    let top_left_constraints =
+      &sub_grid_constraints[top_left_offset..(top_left_offset + 9)];
+    let expected_top_left_constraints =
+      [true, true, false, true, true, false, false, false, true];
+    assert_eq!(top_left_constraints, expected_top_left_constraints);
+
+    let middle_sub_grid_offset = ConstraintType::SubGrid.get_offset() + (9 * 4);
+    let middle_constraints = &sub_grid_constraints
+      [middle_sub_grid_offset..(middle_sub_grid_offset + 9)];
+    let expected_middle_constraints =
+      [true, false, true, true, true, false, false, false, true];
+    assert_eq!(middle_constraints, expected_middle_constraints);
+
+    let bottom_left_offset = ConstraintType::SubGrid.get_offset() + (9 * 8);
+    let bottom_left_constraints =
+      &sub_grid_constraints[bottom_left_offset..(bottom_left_offset + 9)];
+    let expected_bottom_left_constraints =
+      [false, true, true, true, true, true, true, true, true];
+    assert_eq!(bottom_left_constraints, expected_bottom_left_constraints);
+  }
+
+  #[test]
+  fn test_detects_all_constraints_satisfied() {
+    let mut board = Board::new();
+
+    // Set row 1
+    board.set(0, 0, 3);
+    board.set(1, 0, 1);
+    board.set(2, 0, 6);
+    board.set(3, 0, 5);
+    board.set(4, 0, 7);
+    board.set(5, 0, 8);
+    board.set(6, 0, 4);
+    board.set(7, 0, 9);
+    board.set(8, 0, 2);
+    // Set row 2
+    board.set(0, 1, 5);
+    board.set(1, 1, 2);
+    board.set(2, 1, 9);
+    board.set(3, 1, 1);
+    board.set(4, 1, 3);
+    board.set(5, 1, 4);
+    board.set(6, 1, 7);
+    board.set(7, 1, 6);
+    board.set(8, 1, 8);
+
+    // Set row 3
+    board.set(0, 2, 4);
+    board.set(1, 2, 8);
+    board.set(2, 2, 7);
+    board.set(3, 2, 6);
+    board.set(4, 2, 2);
+    board.set(5, 2, 9);
+    board.set(6, 2, 5);
+    board.set(7, 2, 3);
+    board.set(8, 2, 1);
+
+    // Set row 4
+    board.set(0, 3, 2);
+    board.set(1, 3, 6);
+    board.set(2, 3, 3);
+    board.set(3, 3, 4);
+    board.set(4, 3, 1);
+    board.set(5, 3, 5);
+    board.set(6, 3, 9);
+    board.set(7, 3, 8);
+    board.set(8, 3, 7);
+
+    // Set row 5
+    board.set(0, 4, 9);
+    board.set(1, 4, 7);
+    board.set(2, 4, 4);
+    board.set(3, 4, 8);
+    board.set(4, 4, 6);
+    board.set(5, 4, 3);
+    board.set(6, 4, 1);
+    board.set(7, 4, 2);
+    board.set(8, 4, 5);
+
+    // Set row 6
+    board.set(0, 5, 8);
+    board.set(1, 5, 5);
+    board.set(2, 5, 1);
+    board.set(3, 5, 7);
+    board.set(4, 5, 9);
+    board.set(5, 5, 2);
+    board.set(6, 5, 6);
+    board.set(7, 5, 4);
+    board.set(8, 5, 3);
+
+    // Set row 7
+    board.set(0, 6, 1);
+    board.set(1, 6, 3);
+    board.set(2, 6, 8);
+    board.set(3, 6, 9);
+    board.set(4, 6, 4);
+    board.set(5, 6, 7);
+    board.set(6, 6, 2);
+    board.set(7, 6, 5);
+    board.set(8, 6, 6);
+
+    // Set row 8
+    board.set(0, 7, 6);
+    board.set(1, 7, 9);
+    board.set(2, 7, 2);
+    board.set(3, 7, 3);
+    board.set(4, 7, 5);
+    board.set(5, 7, 1);
+    board.set(6, 7, 8);
+    board.set(7, 7, 7);
+    board.set(8, 7, 4);
+
+    // Set row 9
+    board.set(0, 8, 7);
+    board.set(1, 8, 4);
+    board.set(2, 8, 5);
+    board.set(3, 8, 2);
+    board.set(4, 8, 8);
+    board.set(5, 8, 6);
+    board.set(6, 8, 3);
+    board.set(7, 8, 1);
+    board.set(8, 8, 9);
+
+    let mut constraints_row = [false; 242];
+    fill_row_constraints(&board, &mut constraints_row);
+    fill_column_constraints(&board, &mut constraints_row);
+    fill_sub_grid_constraints(&board, &mut constraints_row);
+
+    board.print_board();
+
+    let all_true = constraints_row
+      .iter()
+      .all(|constraint| -> bool { constraint == &true });
+    assert!(all_true);
+  }
+
+  #[test]
+  fn test_launch_algorithm_x() {
+    launch_algorithm_x(&mut Board::new());
+    assert!(false);
+  }
 }

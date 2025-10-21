@@ -58,8 +58,8 @@ impl Board {
   pub fn get_column(&self, col_idx: usize) -> [i32; 9] {
     let mut column = [0; 9];
 
-    for (row_idx, slot) in column.iter_mut().enumerate() {
-      *slot = self.get(row_idx, col_idx);
+    for (y_idx, slot) in column.iter_mut().enumerate() {
+      *slot = self.get(col_idx, y_idx);
     }
 
     column
@@ -81,5 +81,16 @@ mod tests {
     let mut greeter = Board::new();
     greeter.set(0, 5, 1);
     assert_eq!(greeter.get(0, 5), 1);
+  }
+
+  #[test]
+  fn board_get_column() {
+    let mut board = Board::new();
+    board.set(2, 1, 1);
+    board.set(2, 2, 2);
+    board.set(2, 3, 5);
+
+    let second_column = board.get_column(2);
+    assert_eq!([0, 1, 2, 5, 0, 0, 0, 0, 0], second_column);
   }
 }
