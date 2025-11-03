@@ -495,6 +495,7 @@ mod tests {
 
   #[test]
   fn test_generate_constraint_table() {
+    // The constraint table's indexes represent this:
     //
     //                | Row 0 has a 1 | Row 0 has a 2 | Row 0 has a 9 | ... | Row 1 has a 1 | ... |
     //
