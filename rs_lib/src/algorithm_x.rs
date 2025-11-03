@@ -117,7 +117,7 @@ fn fill_sub_grid_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
         if sub_grid_numbers.contains(&required_number) {
           let index = map_constraint_to_column_idx(
             ConstraintType::SubGrid,
-            sub_grid_y_start + (sub_grid_x_start / 3),
+            sub_grid_x_start + (sub_grid_y_start / 3),
             cell_idx,
           );
           constraint_row[index] = true;
@@ -133,7 +133,31 @@ pub fn fill_constraint_table_row(board: &Board, row: &mut [bool; 242]) {
   fill_sub_grid_constraints(board, row);
 }
 
-pub fn launch_algorithm_x(board: &mut Board) -> Board {
+fn generate_constraint_table() -> ConstraintTable {
+  let mut ct = ConstraintTable::default();
+
+  let mut current_constraint_row = 0;
+
+  for row_idx in 0..9 {
+    for col_idx in 0..9 {
+      for value in 1..10 {
+        // Here we need to get the correct row from the constraint table as a slice
+        // Then we need to create a board with the specified choice,
+        //  - eg for the first index that would be a board with a 1 at 0, 0
+        // Then we need to call `fill_constraint_table_row` with the constraint table slice and the board representing the choice
+        let constraint_row = &mut ct.table[current_constraint_row];
+        let mut board = Board::new();
+        board.set(col_idx, row_idx, value);
+        fill_constraint_table_row(&board, constraint_row);
+        current_constraint_row += 1;
+      }
+    }
+  }
+
+  return ct;
+}
+
+pub fn launch_algorithm_x() -> Board {
   // Convert to exact cover problem
 
   // Constraints:
@@ -150,30 +174,9 @@ pub fn launch_algorithm_x(board: &mut Board) -> Board {
 
   // In total the table will have 242 * 728 = 176 176 cells
 
-  let mut constraint_table = ConstraintTable::default().table;
+  let _constraint_table = generate_constraint_table();
 
-  let mut current_constraint_row = 0;
-
-  for col_idx in 0..9 {
-    for row_idx in 0..9 {
-      for value in 1..10 {
-        // Here we need to get the correct row from the constraint table as a slice
-        // Then we need to create a board with the specified choice,
-        //  - eg for the first index that would be a board with a 1 at 0, 0
-        // Then we need to call `fill_constraint_table_row` with the constraint table slice and the board representing the choice
-        let constraint_row = &mut constraint_table[current_constraint_row];
-        board.set(col_idx, row_idx, value);
-        fill_constraint_table_row(board, constraint_row);
-        current_constraint_row += 1;
-      }
-    }
-  }
-
-  for row in constraint_table {
-    println!("{:?}", &row[0..5]);
-  }
-
-  Board::from_board(board)
+  Board::new()
 }
 
 // ==========
@@ -484,8 +487,6 @@ mod tests {
     fill_column_constraints(&board, &mut constraints_row);
     fill_sub_grid_constraints(&board, &mut constraints_row);
 
-    board.print_board();
-
     let all_true = constraints_row
       .iter()
       .all(|constraint| -> bool { constraint == &true });
@@ -493,8 +494,57 @@ mod tests {
   }
 
   #[test]
-  fn test_launch_algorithm_x() {
-    launch_algorithm_x(&mut Board::new());
-    assert!(false);
+  fn test_generate_constraint_table() {
+    //
+    //                | Row 0 has a 1 | Row 0 has a 2 | Row 0 has a 9 | ... | Row 1 has a 1 | ... |
+    //
+    // Place 1 at 0,0 |     true      |    false      |     false     | ... |    false      | ... |
+    // Place 2 at 0,0
+    // ...
+    // Place 9 at 0,0 |     false     |    false      |      true     | ... |    false      | ... |
+    // Place 1 at 0,1 |     true      |    false      |      false    | ... |    false      | ... |
+    // ...
+    // So in general, what should the constraint table look like?
+    //  - We should generate it and then check specific choices
+    let ct = generate_constraint_table();
+
+    // =====================================
+    // For choice of placing 4 at 0,1
+    // =====================================
+    let first_choice_row = &ct.table[9 + 4 - 1];
+    // Asserting that the "Row 0 has a 4" constraint is true for choice "Place 4 at 0,1"
+    assert!(first_choice_row[4 - 1]);
+    // Asserting that the "Column 1 has a 4" constraint is true for choice "Place 4 at 0,1"
+    assert!(first_choice_row[ConstraintType::Column.get_offset() + 9 + 4 - 1]);
+    // Asserting that the "Subgrid 0 has a 4" constraint is true for choice "Place 4 at 0,1"
+    assert!(first_choice_row[ConstraintType::SubGrid.get_offset() + 4 - 1]);
+    // Asserting that all other constraints are false
+    assert!(first_choice_row.iter().filter(|var| **var).count() == 3);
+
+    // =====================================
+    // For choice of placing 7 at 8, 4
+    // =====================================
+    let second_choice_row = &ct.table[(9 * 9 * 8) + (9 * 4) + 7 - 1];
+    // Asserting that the "Row 8 has a 7" constraint is true for choice "Place 7 at 8, 4"
+    assert!(second_choice_row[(9 * 8) + 7 - 1]);
+    // Asserting that the "Column 4 has a 7" constraint is true for choice "Place 7 at 8,4"
+    assert!(
+      second_choice_row[ConstraintType::Column.get_offset() + (9 * 4) + 7 - 1]
+    );
+    // Asserting that the "Subgrid 7 has a 7" constraint is true for choice "Place 7 at 8,4"
+    assert!(
+      second_choice_row[ConstraintType::SubGrid.get_offset() + (9 * 7) + 7 - 1]
+    );
+    // Asserting that all other constraints are false
+    assert!(second_choice_row.iter().filter(|var| **var).count() == 3);
+
+    // =====================================
+    // For choice of placting 1 at 3,0
+    // =====================================
+    let third_choice_row = &ct.table[9 * 3 + 1 - 1];
+    // Assert that the "Subgrid 1 has a 1" constraint is true for choice "Place 1 at 0,3"
+    assert!(third_choice_row[ConstraintType::SubGrid.get_offset() + 9 + 1 - 1]);
+    // Placing a 1 at 0,3 should only satisfy three constraints
+    assert!(third_choice_row.iter().filter(|var| **var).count() == 3);
   }
 }
