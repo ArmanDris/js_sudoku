@@ -31,11 +31,11 @@ impl ConstraintType {
 /// This function is responsible for mapping all 242 constraints
 /// to a predicable index.
 ///
-/// Describing the method with words sucks. This writeup:
+/// This writeup:
 /// https://web.archive.org/web/20230426084731/https://garethrees.org/2007/06/10/zendoku-generation/#section-4
 /// is the inspiration for my method.
 ///
-/// constraint_broad_value is the zero indexed row or column
+/// constraint_broad_value is the zero indexed row/column/sub_grid
 /// eg. row 1 would be zero, column 5 would be 4.
 ///
 /// constraint_cell_value is the zero indexed cell value
@@ -172,9 +172,21 @@ pub fn launch_algorithm_x() -> Board {
 
   // 728 choices
 
-  // In total the table will have 242 * 728 = 176 176 cells
+  let constraint_table = generate_constraint_table().table;
 
-  let _constraint_table = generate_constraint_table();
+  // Manual algorithm x
+
+  let mut solution_set: Vec<[bool; 242]> = vec![];
+
+  // Step 1: Pick an unsatisifed constraint
+  let unsatisfied_column_idx = 0;
+
+  // Step 2: Pick a row satisfying that constraint
+  let satisfying_row =
+    constraint_table.iter().find(|e| e[unsatisfied_column_idx]);
+
+  // Step 3: Remove any rows that satisfy any of the constraitns satisfied by the chosen row
+  // Need to write this function...
 
   Board::new()
 }
