@@ -1,4 +1,5 @@
 use crate::board::Board;
+use std::collections::HashSet;
 
 struct ConstraintTable {
   table: [[bool; 242]; 729],
@@ -157,6 +158,71 @@ fn generate_constraint_table() -> ConstraintTable {
   return ct;
 }
 
+fn find_unsatisfied_constraint(
+  constraint_table: &[[bool; 242]; 729],
+  solution_set: &Vec<usize>,
+) -> Option<usize> {
+  if solution_set.len() == 0 {
+    return Some(0);
+  }
+
+  for col_idx in 0..242 {
+    let mut column_satisfied = false;
+    for &solution_idx in solution_set {
+      let solution_cell = constraint_table[solution_idx][col_idx];
+      if solution_cell {
+        column_satisfied = true;
+        break;
+      }
+    }
+
+    if !column_satisfied {
+      return Some(col_idx);
+    }
+  }
+
+  None
+}
+
+fn find_satisfying_row(
+  ct: &[[bool; 242]; 729],
+  hidden_rows: &HashSet<usize>,
+  column_to_satisfy: usize,
+) -> Option<usize> {
+  for (row_index, row) in ct.iter().enumerate() {
+    if hidden_rows.contains(&row_index) {
+      continue;
+    }
+
+    if row[column_to_satisfy] {
+      return Some(row_index);
+    }
+  }
+
+  None
+}
+
+fn update_hidden_rows(
+  ct: &[[bool; 242]; 729],
+  row_index: usize,
+  hidden_rows: &mut HashSet<usize>,
+) {
+  let target_row = ct[row_index];
+
+  for (constraint_table_row_index, row) in ct.iter().enumerate() {
+    if constraint_table_row_index == row_index {
+      continue;
+    }
+
+    for (column_index, val) in row.iter().enumerate() {
+      if *val && target_row[column_index] {
+        hidden_rows.insert(constraint_table_row_index);
+        break;
+      }
+    }
+  }
+}
+
 pub fn launch_algorithm_x() -> Board {
   // Convert to exact cover problem
 
@@ -175,18 +241,42 @@ pub fn launch_algorithm_x() -> Board {
   let constraint_table = generate_constraint_table().table;
 
   // Manual algorithm x
+  // Data structure needed:
+  // A pair consisting of a choice and the set of rows that choice removed
 
-  let mut solution_set: Vec<[bool; 242]> = vec![];
+  let mut hidden_rows: HashSet<usize> = HashSet::new();
+  let mut solution_set: Vec<usize> = vec![];
 
   // Step 1: Pick an unsatisifed constraint
-  let unsatisfied_column_idx = 0;
+  let unsatisfied_column_idx = match find_unsatisfied_constraint(&constraint_table, &solution_set) {
+    Some(index) => index,
+    None => panic!("SOLUTION SET SOLVES BOARD, IMPLEMENT LOGIC TO TURN THE SOLUTION SET BACK INTO A BOARD"),
+  };
 
-  // Step 2: Pick a row satisfying that constraint
-  let satisfying_row =
-    constraint_table.iter().find(|e| e[unsatisfied_column_idx]);
+  // Step 2: Pick a row that satisfies that constraint
+  let satisfying_row = match find_satisfying_row(
+    &constraint_table,
+    &hidden_rows,
+    unsatisfied_column_idx,
+  ) {
+    Some(row_index) => row_index,
+    None => panic!(
+      "NO AVAILABLE ROWS CAN SATISFY CONSTRAINT. SEARCH FAILED, MUST BACKTRACK"
+    ),
+  };
 
-  // Step 3: Remove any rows that satisfy any of the constraitns satisfied by the chosen row
-  // Need to write this function...
+  // Step 3: Add the row to the solution set
+  solution_set.push(satisfying_row);
+
+  // Step 4: Remove any rows that satisfy any of the constraitns satisfied by the chosen row
+  update_hidden_rows(
+    &constraint_table,
+    unsatisfied_column_idx,
+    &mut hidden_rows,
+  );
+
+  println!("{:?}", &solution_set);
+  println!("{:?}", &hidden_rows);
 
   Board::new()
 }
@@ -559,5 +649,99 @@ mod tests {
     assert!(third_choice_row[ConstraintType::SubGrid.get_offset() + 9 + 1 - 1]);
     // Placing a 1 at 0,3 should only satisfy three constraints
     assert!(third_choice_row.iter().filter(|var| **var).count() == 3);
+  }
+
+  #[test]
+  fn test_update_hidden_rows() {
+    // Find any colliding trues and add their indexes to hidden_rows
+
+    // Make an empty 242 * 729 table
+    let mut hidden_rows: HashSet<usize> = HashSet::new();
+    let empty_table = [[false; 242]; 729];
+
+    // With an empty table, nothing should happen
+    update_hidden_rows(&empty_table, 0, &mut hidden_rows);
+    assert!(hidden_rows.len() == 0);
+
+    hidden_rows = HashSet::new();
+    let mut table_one = [[false; 242]; 729];
+    // In row 0 place a true at index 1, 5, 6
+    table_one[0][1] = true;
+    table_one[0][5] = true;
+    table_one[0][6] = true;
+
+    // In row 1 place a true at index 0, 5, 9
+    table_one[1][0] = true;
+    table_one[1][5] = true;
+    table_one[1][9] = true;
+    // In row 2 place a true at index 0, 1, 2
+    table_one[2][0] = true;
+    table_one[2][1] = true;
+    table_one[2][2] = true;
+
+    // In row 3 place a true at index 2, 3, 4
+    table_one[3][2] = true;
+    table_one[3][3] = true;
+    table_one[3][4] = true;
+
+    // In row 4 place a true at index 6, 7, 8
+    table_one[4][6] = true;
+    table_one[4][7] = true;
+    table_one[4][8] = true;
+
+    // Act
+    update_hidden_rows(&table_one, 0, &mut hidden_rows);
+
+    // Assert that row 1, 2 and row 4 get added to hidden rows
+    assert!(hidden_rows.contains(&1));
+    assert!(hidden_rows.contains(&2));
+    assert!(hidden_rows.contains(&4));
+    assert!(hidden_rows.len() == 3);
+  }
+
+  #[test]
+  fn test_find_satisfying_row_scenarios() {
+    // 1) No row satisfies the column → None
+    let mut ct = [[false; 242]; 729];
+    let col = 137;
+    let hidden = HashSet::<usize>::new();
+    assert_eq!(find_satisfying_row(&ct, &hidden, col), None);
+
+    // 2) A single row satisfies → that row index
+    ct[10][col] = true;
+    assert_eq!(find_satisfying_row(&ct, &hidden, col), Some(10));
+
+    // 3) An earlier row also satisfies, but it’s hidden → return next visible (10)
+    ct[3][col] = true;
+    let mut hidden = HashSet::new();
+    hidden.insert(3);
+    assert_eq!(find_satisfying_row(&ct, &hidden, col), Some(10));
+
+    // 4) If earlier row isn’t hidden → earliest match (3) wins
+    let hidden = HashSet::<usize>::new();
+    assert_eq!(find_satisfying_row(&ct, &hidden, col), Some(3));
+
+    // 5) Hide both earlier matches; ensure it finds a later satisfying row
+    let mut hidden = HashSet::new();
+    hidden.insert(3);
+    hidden.insert(10);
+    ct[400][col] = true;
+    assert_eq!(find_satisfying_row(&ct, &hidden, col), Some(400));
+
+    // 6) Boundary columns: 0 and 241
+    let mut ct2 = [[false; 242]; 729];
+
+    ct2[5][0] = true;
+    assert_eq!(find_satisfying_row(&ct2, &HashSet::new(), 0), Some(5));
+
+    ct2[5][0] = false;
+    ct2[25][241] = true;
+    assert_eq!(find_satisfying_row(&ct2, &HashSet::new(), 241), Some(25));
+  }
+
+  #[test]
+  fn test_launch_algorithm_x() {
+    let _result = launch_algorithm_x();
+    assert!(false);
   }
 }
