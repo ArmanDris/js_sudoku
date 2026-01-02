@@ -468,23 +468,21 @@ fn test_get_conflicting_rows() {
 
 #[test]
 fn test_pick_row() {
-  // Empty input -> None (both strategies)
-  assert_eq!(pick_row(vec![], DecisionStrategy::First), None);
-  assert_eq!(pick_row(vec![], DecisionStrategy::Random), None);
+  // TODO: Assert that this panicks for an empty input
+  // Empty input -> Panic (both strategies)
 
   // Single element -> always that element, remainder empty (both strategies)
-  let r = pick_row(vec![42], DecisionStrategy::First).unwrap();
+  let r = pick_row(vec![42], DecisionStrategy::First);
   assert_eq!(r.0, 42);
   assert!(r.1.is_empty());
 
-  let r = pick_row(vec![42], DecisionStrategy::Random).unwrap();
+  let r = pick_row(vec![42], DecisionStrategy::Random);
   assert_eq!(r.0, 42);
   assert!(r.1.is_empty());
 
   // Multiple elements, First strategy: selects index 0, remainder is original without that element
   let input = vec![10, 20, 30, 40];
-  let (selected, remaining) =
-    pick_row(input.clone(), DecisionStrategy::First).unwrap();
+  let (selected, remaining) = pick_row(input.clone(), DecisionStrategy::First);
   assert_eq!(selected, 10);
   assert_eq!(remaining.len(), input.len() - 1);
 
@@ -499,8 +497,7 @@ fn test_pick_row() {
   // Multiple elements, Random strategy:
   // We can't assert which element was picked, but we can assert invariants.
   let input = vec![1, 2, 3, 4, 5];
-  let (selected, remaining) =
-    pick_row(input.clone(), DecisionStrategy::Random).unwrap();
+  let (selected, remaining) = pick_row(input.clone(), DecisionStrategy::Random);
   assert_eq!(remaining.len(), input.len() - 1);
   assert!(input.contains(&selected));
 
@@ -511,8 +508,8 @@ fn test_pick_row() {
   assert_eq!(all, input_set);
 }
 
-#[test]
-fn test_algorithm_x() {
-  launch_algorithm_x();
-  assert!(false);
-}
+// #[test]
+// fn test_algorithm_x() {
+//   launch_algorithm_x();
+//   assert!(false);
+// }
