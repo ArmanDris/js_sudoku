@@ -508,8 +508,21 @@ fn test_pick_row() {
   assert_eq!(all, input_set);
 }
 
-// #[test]
-// fn test_algorithm_x() {
-//   launch_algorithm_x();
-//   assert!(false);
-// }
+#[test]
+fn test_algorithm_x() {
+  let solution = launch_algorithm_x();
+  // There are 729 constraint table rows where,
+  // the first 9 are for 0,0 with the first representing
+  // 0,0 = 1. The second representing 0,0 = 2, and the
+  // third representing 0,0 = 3.
+
+  // To map back to a choice we do a floor division by 9, that gives us the index.
+  // Then we do a modulo division by 9, that gives us the value
+  for row_index in solution {
+    let index = row_index / 9;
+    let val = row_index % 9;
+
+    println!("index: {:}, has value: {:}", index, val);
+  }
+  assert!(false);
+}

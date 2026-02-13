@@ -1,6 +1,10 @@
 use crate::board::Board;
+use core::panic;
 use rand::Rng;
-use std::collections::HashSet;
+use std::{
+  collections::HashSet,
+  time::{SystemTime, UNIX_EPOCH},
+};
 
 #[cfg(test)]
 #[path = "algorithm_x_tests.rs"]
@@ -275,7 +279,32 @@ fn pick_row(
   (selected_row, possible_rows)
 }
 
-pub fn launch_algorithm_x() {
+/// Returns the last decision in the list that has potential rows
+/// Modifies decisions in place, removing all decisions with no
+/// potential rows and removing the last decision that has potential
+/// rows
+/// If it returns none, then that means there are no more decisions to pop
+fn get_last_decision(decisions: &mut Vec<Decision>) -> Option<Vec<Decision>> {
+  let mut popped_decisions: Vec<Decision> = vec![];
+  loop {
+    let decision = match decisions.pop() {
+      Some(d) => d,
+      None => return None,
+    };
+
+    let has_potential_rows = !decision.potential_rows.is_empty();
+
+    popped_decisions.push(decision);
+
+    if has_potential_rows {
+      break;
+    }
+  }
+
+  Some(popped_decisions)
+}
+
+pub fn launch_algorithm_x() -> Vec<usize> {
   // Convert to exact cover problem
 
   // Constraints:
@@ -292,10 +321,7 @@ pub fn launch_algorithm_x() {
 
   let constraint_table = generate_constraint_table().table;
 
-  // When we go into an iteration we need to know
-
   let mut hidden_rows: HashSet<usize> = HashSet::new();
-  // This should be a hash set but whatever
   let mut solution_set: Vec<usize> = vec![];
 
   // decisions is an array of tuples, where the last element in the array is the most recent decision
@@ -303,11 +329,20 @@ pub fn launch_algorithm_x() {
   // the other possible rows we could have selected.
   let mut decisions: Vec<Decision> = vec![];
 
+  let mut i = 0;
+
+  let mut start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
   loop {
     // Step 1: Pick an unsatisifed constraint
-    let unsatisfied_column_idx = match find_unsatisfied_constraint(&constraint_table, &solution_set) {
+    let unsatisfied_column_idx =
+      match find_unsatisfied_constraint(&constraint_table, &solution_set) {
         Some(index) => index,
-        None => panic!("SOLUTION SET SOLVES BOARD, IMPLEMENT LOGIC TO TURN THE SOLUTION SET BACK INTO A BOARD"),
+        None => {
+          println!("{:?}", solution_set);
+          println!("{:?}", solution_set.len());
+          // panic!("SOLUTION SET SOLVES BOARD, IMPLEMENT LOGIC TO TURN THE SOLUTION SET BACK INTO A BOARD")
+          return solution_set;
+        }
       };
 
     // Step 2: Get all the rows we can pick to satisfy the constraint
@@ -317,25 +352,42 @@ pub fn launch_algorithm_x() {
       unsatisfied_column_idx,
     );
 
+    // Step 2.5: Handle empty satisfying rows:
+    // If satisfying rows is empty:
+    //   1. Pop the last decision
+    //   2. Un-hide all the conflicting rows from the popped decision
+    //   3. Select the next potential row from the popped decision
+    //      from the decision (or a random one if we are using a random strategy)
+    //      ** if potential rows is empty we need to pop another decision **
+    //   4. Calculate all the conflicting rows from the newly picked row
+    //   5. Create a new decision from the leftover potential rows, the newly selected row, and the new conflicting rows
+    //   6. If satisfying rows is empty repeat process
+
     let (selected_row, possible_rows) = match satisfying_rows.is_empty() {
       false => pick_row(satisfying_rows, DecisionStrategy::First),
       true => {
-        // Here we need to implement our backtracking logic
-        // Meaning we need to pop decisions off the stack until there was another potential decision, then we need to call
-        // pick row on that other potential decision
-        (0, vec![])
+        let mut popped_decisions = match get_last_decision(&mut decisions) {
+          Some(popped_ds) => popped_ds,
+          None => panic!("There are no decisions left to undo, but there is also no possible choice of row. Cannot proceed, exiting"),
+        };
+        for decision in &popped_decisions {
+          let conflicting_rows: HashSet<usize> = decision
+            .rows_conflicting_with_selected_row
+            .iter()
+            .copied()
+            .collect();
+          hidden_rows.extract_if(|v| conflicting_rows.contains(v));
+        }
+        let popped_decision = match popped_decisions.pop() {
+          Some(d) => d,
+          None => panic!(
+          "If we are here there should have been at least one popped decision"
+        ),
+        };
+
+        pick_row(popped_decision.potential_rows, DecisionStrategy::First)
       }
     };
-    // let (selected_row, possible_rows) = match pick_row(
-    //   satisfying_rows,
-    //   DecisionStrategy::First,
-    // ) {
-    //   Some(row) => row,
-    //   None => {
-    //     // Here we undo decisions until there is anoter row to take
-    //     panic!("there were no matching rows... i guess this is where backtracking code would be")
-    //   }
-    // };
 
     // Step 3: Add the row to the solution set
     solution_set.push(selected_row);
@@ -352,9 +404,19 @@ pub fn launch_algorithm_x() {
       rows_conflicting_with_selected_row: conflicting_rows,
     };
 
-    println!("{:?}", &solution_set.len());
-    println!("{:?}", &hidden_rows.len());
-    println!("{:?}", &decision);
+    if i % 100 == 0 || i < 3 {
+      println!("solution set length: {:?}", &solution_set.len());
+      println!("hidden rows: {:?}", &hidden_rows.len());
+      println!("decision: {:?}", &decision);
+      let end = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+      println!("This batch of took {:?}", (end - start));
+      println!("");
+      start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    }
+    if i > 5_000 {
+      panic!("hit 100 iterations");
+    }
+    i += 1;
 
     decisions.push(decision);
   }
