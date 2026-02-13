@@ -517,10 +517,10 @@ fn test_algorithm_x() {
   // third representing 0,0 = 3.
 
   // To map back to a choice we do a floor division by 9, that gives us the index.
-  // Then we do a modulo division by 9, that gives us the value
+  // Then we do a modulo division by 9 then add 1, that gives us the value
   for row_index in solution {
     let index = row_index / 9;
-    let val = row_index % 9;
+    let val = row_index % 9 + 1;
 
     println!("index: {:}, has value: {:}", index, val);
   }
