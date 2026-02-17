@@ -11,18 +11,18 @@ use std::{
 mod algorithm_x_tests;
 
 struct ConstraintTable {
-  table: [[bool; 242]; 729],
+  table: [[bool; 323]; 729],
 }
 
 impl Default for ConstraintTable {
   fn default() -> Self {
     Self {
-      table: [[false; 242]; 729],
+      table: [[false; 323]; 729],
     }
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Decision {
   selected_row: usize,
   potential_rows: Vec<usize>,
@@ -33,6 +33,7 @@ enum ConstraintType {
   Row,
   Column,
   SubGrid,
+  Existence,
 }
 
 impl ConstraintType {
@@ -41,11 +42,12 @@ impl ConstraintType {
       ConstraintType::Row => 0,
       ConstraintType::Column => 80,
       ConstraintType::SubGrid => 161,
+      ConstraintType::Existence => 242,
     }
   }
 }
 
-/// This function is responsible for mapping all 242 constraints
+/// This function is responsible for mapping all 323 constraints
 /// to a predicable index.
 ///
 /// This writeup:
@@ -70,7 +72,7 @@ fn map_constraint_to_column_idx(
 /// Generates a row in the constraint table using the choices represented by
 /// the board parameter.
 /// These constraints take up the first 81 indexes in the constraint table
-fn fill_row_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
+fn fill_row_constraints(board: &Board, constraint_row: &mut [bool; 323]) {
   for row_idx in 0..9 {
     let board_row = board.get_row(row_idx);
     for cell_idx in 0..9 {
@@ -84,7 +86,7 @@ fn fill_row_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
   }
 }
 
-fn fill_column_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
+fn fill_column_constraints(board: &Board, constraint_row: &mut [bool; 323]) {
   for column_idx in 0..9 {
     let board_column = board.get_column(column_idx);
     for cell_idx in 0..9 {
@@ -108,7 +110,7 @@ fn fill_column_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
 /// grid contain each number. Following this pattern
 /// the fourth set of nine indexes would represent whether
 /// the left middle sub grid has each number.
-fn fill_sub_grid_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
+fn fill_sub_grid_constraints(board: &Board, constraint_row: &mut [bool; 323]) {
   for sub_grid_y_start in (0..9).step_by(3) {
     for sub_grid_x_start in (0..9).step_by(3) {
       let mut sub_grid_numbers: Vec<i32> = vec![];
@@ -144,10 +146,25 @@ fn fill_sub_grid_constraints(board: &Board, constraint_row: &mut [bool; 242]) {
   }
 }
 
-pub fn fill_constraint_table_row(board: &Board, row: &mut [bool; 242]) {
+fn fill_existence_constraints(board: &Board, constraint_row: &mut [bool; 323]) {
+  for row_idx in 0..9 {
+    for col_idx in 0..9 {
+      let cell_has_value = board.get(col_idx, row_idx) != 0;
+      let index = map_constraint_to_column_idx(
+        ConstraintType::Existence,
+        row_idx,
+        col_idx,
+      );
+      constraint_row[index] = cell_has_value;
+    }
+  }
+}
+
+pub fn fill_constraint_table_row(board: &Board, row: &mut [bool; 323]) {
   fill_row_constraints(board, row);
   fill_column_constraints(board, row);
   fill_sub_grid_constraints(board, row);
+  fill_existence_constraints(board, row);
 }
 
 fn generate_constraint_table() -> ConstraintTable {
@@ -175,14 +192,14 @@ fn generate_constraint_table() -> ConstraintTable {
 }
 
 fn find_unsatisfied_constraint(
-  constraint_table: &[[bool; 242]; 729],
+  constraint_table: &[[bool; 323]; 729],
   solution_set: &Vec<usize>,
 ) -> Option<usize> {
   if solution_set.len() == 0 {
     return Some(0);
   }
 
-  for col_idx in 0..242 {
+  for col_idx in 0..323 {
     let mut column_satisfied = false;
     for &solution_idx in solution_set {
       let solution_cell = constraint_table[solution_idx][col_idx];
@@ -201,7 +218,7 @@ fn find_unsatisfied_constraint(
 }
 
 fn find_satisfying_rows(
-  ct: &[[bool; 242]; 729],
+  ct: &[[bool; 323]; 729],
   hidden_rows: &HashSet<usize>,
   column_to_satisfy: usize,
 ) -> Vec<usize> {
@@ -220,7 +237,7 @@ fn find_satisfying_rows(
 }
 
 fn get_conflicting_rows(
-  ct: &[[bool; 242]; 729],
+  ct: &[[bool; 323]; 729],
   hidden_row_indexes: &HashSet<usize>,
   selected_row_index: usize,
 ) -> Vec<usize> {
@@ -304,6 +321,51 @@ fn get_last_decision(decisions: &mut Vec<Decision>) -> Option<Vec<Decision>> {
   Some(popped_decisions)
 }
 
+fn backtrack(
+  decisions: &mut Vec<Decision>,
+  hidden_rows: &mut HashSet<usize>,
+  solution_set: &mut Vec<usize>,
+) -> (usize, Vec<usize>) {
+  let mut popped_decisions = match get_last_decision(decisions) {
+    Some(popped_ds) => popped_ds,
+    None => {
+      println!("hidden rows: {:?}", hidden_rows);
+      panic!("There are no decisions left to undo, but there is also no possible choice of row. Cannot proceed, exiting")
+    }
+  };
+  for decision in &popped_decisions {
+    // Remove selected row from solution set
+    let solution_set_selected_row_index = match solution_set.iter().position(|e| e == &decision.selected_row) {
+            Some(index) => index,
+            None => panic!("Attempted to pop a decision whose selected row was not in the solution set. This is a bad state the code has a bug."),
+          };
+    solution_set.remove(solution_set_selected_row_index);
+
+    // Remove selected row from hidden rows
+    hidden_rows.remove(&decision.selected_row);
+
+    // Unhide the rows that were hidden from this decision
+    let conflicting_rows: HashSet<usize> = decision
+      .rows_conflicting_with_selected_row
+      .iter()
+      .copied()
+      .collect();
+    let extracted_elements: Vec<_> = hidden_rows
+      .extract_if(|v| conflicting_rows.contains(v))
+      .collect();
+    println!("extracted elements: {:?}", extracted_elements);
+  }
+
+  let popped_decision = match popped_decisions.pop() {
+    Some(d) => d,
+    None => panic!(
+      "If we are here there should have been at least one popped decision"
+    ),
+  };
+
+  pick_row(popped_decision.potential_rows, DecisionStrategy::First)
+}
+
 pub fn launch_algorithm_x() -> Vec<usize> {
   // Convert to exact cover problem
 
@@ -311,8 +373,9 @@ pub fn launch_algorithm_x() -> Vec<usize> {
   //  - all rows must contain 1-9 (81)
   //  - all columns must contain 1-9 (81)
   //  - each subgrid must contain 1-9 (81)
+  //  - each cell must contain a value (81)
 
-  // 242 constraints
+  // 323 constraints
 
   // Choices:
   //  - each cell has a choice between 1-9
@@ -365,28 +428,7 @@ pub fn launch_algorithm_x() -> Vec<usize> {
 
     let (selected_row, possible_rows) = match satisfying_rows.is_empty() {
       false => pick_row(satisfying_rows, DecisionStrategy::First),
-      true => {
-        let mut popped_decisions = match get_last_decision(&mut decisions) {
-          Some(popped_ds) => popped_ds,
-          None => panic!("There are no decisions left to undo, but there is also no possible choice of row. Cannot proceed, exiting"),
-        };
-        for decision in &popped_decisions {
-          let conflicting_rows: HashSet<usize> = decision
-            .rows_conflicting_with_selected_row
-            .iter()
-            .copied()
-            .collect();
-          hidden_rows.extract_if(|v| conflicting_rows.contains(v));
-        }
-        let popped_decision = match popped_decisions.pop() {
-          Some(d) => d,
-          None => panic!(
-          "If we are here there should have been at least one popped decision"
-        ),
-        };
-
-        pick_row(popped_decision.potential_rows, DecisionStrategy::First)
-      }
+      true => backtrack(&mut decisions, &mut hidden_rows, &mut solution_set),
     };
 
     // Step 3: Add the row to the solution set
@@ -404,17 +446,17 @@ pub fn launch_algorithm_x() -> Vec<usize> {
       rows_conflicting_with_selected_row: conflicting_rows,
     };
 
-    if i % 100 == 0 || i < 3 {
+    if i % 100 == 0 || i < 5 {
       println!("solution set length: {:?}", &solution_set.len());
-      println!("hidden rows: {:?}", &hidden_rows.len());
-      println!("decision: {:?}", &decision);
+      println!("hidden rows: {:?}", &hidden_rows);
+      println!("new decision: {:?}", &decision);
       let end = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
       println!("This batch of took {:?}", (end - start));
       println!("");
       start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
     }
-    if i > 5_000 {
-      panic!("hit 100 iterations");
+    if i > 5000 {
+      panic!("hit 5 iterations");
     }
     i += 1;
 

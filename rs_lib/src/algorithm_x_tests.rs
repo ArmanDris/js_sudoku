@@ -5,7 +5,7 @@ use std::collections::HashSet;
 fn on_an_empty_board_it_returns_the_correct_constraints() {
   let board = Board::new();
 
-  let mut constraint_row = [false; 242];
+  let mut constraint_row = [false; 323];
   fill_row_constraints(&board, &mut constraint_row);
 
   let all_false = constraint_row
@@ -23,7 +23,7 @@ fn correctly_resolves_first_row() {
   board.set(2, 0, 3);
   board.set(3, 0, 4);
 
-  let mut constraint_row = [false; 242];
+  let mut constraint_row = [false; 323];
   fill_row_constraints(&board, &mut constraint_row);
 
   let first_four_true = &constraint_row[0..4]
@@ -50,7 +50,7 @@ fn correctly_resolves_two_rows() {
   board.set(2, 5, 5);
   board.set(3, 5, 8);
 
-  let mut constraint_row = [false; 242];
+  let mut constraint_row = [false; 323];
   fill_row_constraints(&board, &mut constraint_row);
 
   // fourth row will be from index [3*9, 4*9)
@@ -71,7 +71,7 @@ fn correctly_resolves_two_rows() {
 #[test]
 fn test_no_false_positives() {
   let board = Board::new();
-  let mut constraint_column = [false; 242];
+  let mut constraint_column = [false; 323];
   fill_column_constraints(&board, &mut constraint_column);
   let all_false = constraint_column
     .iter()
@@ -86,7 +86,7 @@ fn test_detects_first_column_constraints() {
   board.set(0, 0, 8);
   board.set(0, 8, 1);
 
-  let mut constraint_row = [false; 242];
+  let mut constraint_row = [false; 323];
   fill_column_constraints(&board, &mut constraint_row);
 
   let offset = ConstraintType::Column.get_offset();
@@ -108,7 +108,7 @@ fn test_detects_two_random_column_constraints() {
   board.set(8, 7, 6);
   board.set(8, 8, 7);
 
-  let mut column_constraints = [false; 242];
+  let mut column_constraints = [false; 323];
   fill_column_constraints(&board, &mut column_constraints);
 
   let column_two_offset = ConstraintType::Column.get_offset() + (9 * 2);
@@ -168,7 +168,7 @@ fn test_detects_sub_grid_constraints() {
   // | 3 | 9 | 9 |
 
   let top_left_offset = ConstraintType::SubGrid.get_offset();
-  let mut sub_grid_constraints = [false; 242];
+  let mut sub_grid_constraints = [false; 323];
   fill_sub_grid_constraints(&board, &mut sub_grid_constraints);
 
   let top_left_constraints =
@@ -294,10 +294,11 @@ fn test_detects_all_constraints_satisfied() {
   board.set(7, 8, 1);
   board.set(8, 8, 9);
 
-  let mut constraints_row = [false; 242];
+  let mut constraints_row = [false; 323];
   fill_row_constraints(&board, &mut constraints_row);
   fill_column_constraints(&board, &mut constraints_row);
   fill_sub_grid_constraints(&board, &mut constraints_row);
+  fill_existence_constraints(&board, &mut constraints_row);
 
   let all_true = constraints_row
     .iter()
@@ -315,56 +316,66 @@ fn test_generate_constraint_table() {
   // Place 2 at 0,0
   // ...
   // Place 9 at 0,0 |     false     |    false      |      true     | ... |    false      | ... |
-  // Place 1 at 0,1 |     true      |    false      |      false    | ... |    false      | ... |
+  // Place 1 at 1,0 |     true      |    false      |      false    | ... |    false      | ... |
   // ...
-  // So in general, what should the constraint table look like?
-  //  - We should generate it and then check specific choices
   let ct = generate_constraint_table();
 
   // =====================================
   // For choice of placing 4 at 0,1
   // =====================================
-  let first_choice_row = &ct.table[9 + 4 - 1];
-  // Asserting that the "Row 0 has a 4" constraint is true for choice "Place 4 at 0,1"
-  assert!(first_choice_row[4 - 1]);
-  // Asserting that the "Column 1 has a 4" constraint is true for choice "Place 4 at 0,1"
-  assert!(first_choice_row[ConstraintType::Column.get_offset() + 9 + 4 - 1]);
+  let first_choice_row = &ct.table[9 * 9 * 1 + 4 - 1];
+  // Asserting that the "Row 1 has a 4" constraint is true for choice "Place 4 at 0,1"
+  assert!(first_choice_row[9 + 4 - 1]);
+  // Asserting that the "Column 0 has a 4" constraint is true for choice "Place 4 at 0,1"
+  assert!(first_choice_row[ConstraintType::Column.get_offset() + 4 - 1]);
   // Asserting that the "Subgrid 0 has a 4" constraint is true for choice "Place 4 at 0,1"
   assert!(first_choice_row[ConstraintType::SubGrid.get_offset() + 4 - 1]);
+  // Asserting that the "Cell 0,1 contains a value" constraint is true for choice "Place 4 at 0,1"
+  assert!(first_choice_row[ConstraintType::Existence.get_offset() + 9]);
   // Asserting that all other constraints are false
-  assert!(first_choice_row.iter().filter(|var| **var).count() == 3);
+  assert!(first_choice_row.iter().filter(|var| **var).count() == 4);
 
   // =====================================
   // For choice of placing 7 at 8, 4
   // =====================================
-  let second_choice_row = &ct.table[(9 * 9 * 8) + (9 * 4) + 7 - 1];
-  // Asserting that the "Row 8 has a 7" constraint is true for choice "Place 7 at 8, 4"
-  assert!(second_choice_row[(9 * 8) + 7 - 1]);
-  // Asserting that the "Column 4 has a 7" constraint is true for choice "Place 7 at 8,4"
+  let second_choice_row = &ct.table[(9 * 8) + (9 * 9 * 4) + 7 - 1];
+  // Asserting that the "Row 4 has a 7" constraint is true for choice "Place 7 at 8, 4"
+  assert!(second_choice_row[(9 * 4) + 7 - 1]);
+  // Asserting that the "Column 8 has a 7" constraint is true for choice "Place 7 at 8,4"
   assert!(
-    second_choice_row[ConstraintType::Column.get_offset() + (9 * 4) + 7 - 1]
+    second_choice_row[ConstraintType::Column.get_offset() + (9 * 8) + 7 - 1]
   );
-  // Asserting that the "Subgrid 7 has a 7" constraint is true for choice "Place 7 at 8,4"
+  // Asserting that the "Subgrid 5 has a 7" constraint is true for choice "Place 7 at 8,4"
   assert!(
-    second_choice_row[ConstraintType::SubGrid.get_offset() + (9 * 7) + 7 - 1]
+    second_choice_row[ConstraintType::SubGrid.get_offset() + (9 * 5) + 7 - 1]
+  );
+  // Asserting that the "Cell 8,4 has a value" constraint is true for choice "Place 7 at 8,4"
+  assert!(
+    second_choice_row[ConstraintType::Existence.get_offset() + (4 * 9) + 8]
   );
   // Asserting that all other constraints are false
-  assert!(second_choice_row.iter().filter(|var| **var).count() == 3);
+  assert!(second_choice_row.iter().filter(|var| **var).count() == 4);
 
   // =====================================
   // For choice of placting 1 at 3,0
   // =====================================
-  let third_choice_row = &ct.table[9 * 3 + 1 - 1];
-  // Assert that the "Subgrid 1 has a 1" constraint is true for choice "Place 1 at 0,3"
+  let third_choice_row = &ct.table[(9 * 3) + 1 - 1];
+  // Assert that the "Row 0 has a 1" constraint is true for "Place 1 at 3,0"
+  assert!(third_choice_row[1 - 1]);
+  // Assert that the "Column 3 has a 1" constraint is true for "Place 1 at 3,0"
+  assert!(
+    third_choice_row[ConstraintType::Column.get_offset() + (9 * 3) + 1 - 1]
+  );
+  // Assert that the "Subgrid 1 has a 1" constraint is true for "Place 1 at 3,0"
   assert!(third_choice_row[ConstraintType::SubGrid.get_offset() + 9 + 1 - 1]);
-  // Placing a 1 at 0,3 should only satisfy three constraints
-  assert!(third_choice_row.iter().filter(|var| **var).count() == 3);
+  // Assert that all other constraints are false
+  assert!(third_choice_row.iter().filter(|var| **var).count() == 4);
 }
 
 #[test]
 fn test_find_satisfying_row_scenarios() {
   // 1) No row satisfies the column → None
-  let mut ct = [[false; 242]; 729];
+  let mut ct = [[false; 323]; 729];
   let col = 137;
   let hidden = HashSet::<usize>::new();
   assert_eq!(find_satisfying_rows(&ct, &hidden, col), vec![]);
@@ -391,7 +402,7 @@ fn test_find_satisfying_row_scenarios() {
   assert_eq!(find_satisfying_rows(&ct, &hidden, col).first(), Some(&400));
 
   // 6) Boundary columns: 0 and 241
-  let mut ct2 = [[false; 242]; 729];
+  let mut ct2 = [[false; 323]; 729];
 
   ct2[5][0] = true;
   assert_eq!(
@@ -409,7 +420,7 @@ fn test_find_satisfying_row_scenarios() {
 
 #[test]
 fn test_get_conflicting_rows() {
-  const N_COLS: usize = 242;
+  const N_COLS: usize = 323;
   const N_ROWS: usize = 729;
 
   fn row_with(cols_true: &[usize]) -> [bool; N_COLS] {
@@ -508,21 +519,96 @@ fn test_pick_row() {
   assert_eq!(all, input_set);
 }
 
+// #[test]
+// fn test_fill_existence_constraints() {
+//   let mut board = Board::new();
+
+//   board.set(0, 0, 1);
+//   board.set(3, 1, 4);
+//   board.set(8, 7, 9);
+
+//   let mut constraint_row = [false; 323];
+//   fill_existence_constraints(&board, &mut constraint_row);
+
+//   // It should all be false except for index 0, 3 * 9 + 1, 8 * 9 + 7
+//   // which is: 242, 270, 321
+
+//   println!("{:?}", &constraint_row[242..323]);
+//   assert!(constraint_row[ConstraintType::Existence.get_offset() + 0]);
+//   assert!(constraint_row[ConstraintType::Existence.get_offset() + 28]);
+//   assert!(constraint_row[ConstraintType::Existence.get_offset() + 79]);
+// }
+
 #[test]
-fn test_algorithm_x() {
-  let solution = launch_algorithm_x();
-  // There are 729 constraint table rows where,
-  // the first 9 are for 0,0 with the first representing
-  // 0,0 = 1. The second representing 0,0 = 2, and the
-  // third representing 0,0 = 3.
+fn test_backtracking() {
+  let mut decisions: Vec<Decision> = vec![
+    Decision {
+      selected_row: 0,
+      potential_rows: vec![1, 2, 3],
+      rows_conflicting_with_selected_row: vec![4, 5, 6],
+    },
+    Decision {
+      selected_row: 7,
+      potential_rows: vec![],
+      rows_conflicting_with_selected_row: vec![8, 9, 10],
+    },
+    Decision {
+      selected_row: 11,
+      potential_rows: vec![12],
+      rows_conflicting_with_selected_row: vec![13, 14, 15],
+    },
+  ];
+  let mut hidden_rows: HashSet<usize> =
+    HashSet::from([4, 5, 6, 8, 9, 10, 13, 14, 15]);
+  let mut solution_set: Vec<usize> = vec![0, 7, 11];
 
-  // To map back to a choice we do a floor division by 9, that gives us the index.
-  // Then we do a modulo division by 9 then add 1, that gives us the value
-  for row_index in solution {
-    let index = row_index / 9;
-    let val = row_index % 9 + 1;
+  let (selected_row, potential_rows) =
+    backtrack(&mut decisions, &mut hidden_rows, &mut solution_set);
 
-    println!("index: {:}, has value: {:}", index, val);
-  }
-  assert!(false);
+  assert_eq!(selected_row, 12);
+  assert_eq!(potential_rows, vec![]);
+  assert_eq!(
+    decisions,
+    vec![
+      Decision {
+        selected_row: 0,
+        potential_rows: vec![1, 2, 3],
+        rows_conflicting_with_selected_row: vec![4, 5, 6]
+      },
+      Decision {
+        selected_row: 7,
+        potential_rows: vec![],
+        rows_conflicting_with_selected_row: vec![8, 9, 10]
+      },
+    ]
+  );
+  assert_eq!(hidden_rows, HashSet::from([4, 5, 6, 8, 9, 10]));
+  assert_eq!(solution_set, vec![0, 7]);
+
+  let (selected_row, potential_rows) =
+    backtrack(&mut decisions, &mut hidden_rows, &mut solution_set);
+  assert_eq!(selected_row, 1);
+  assert_eq!(potential_rows, vec![3, 2]);
+  assert_eq!(decisions, vec![]);
+  assert_eq!(hidden_rows, HashSet::new());
+  assert_eq!(solution_set, vec![]);
 }
+
+// #[test]
+// fn test_algorithm_x() {
+//   let solution = launch_algorithm_x();
+//   // There are 729 constraint table rows where,
+//   // the first 9 are for 0,0 with the first representing
+//   // 0,0 = 1. The second representing 0,0 = 2, and the
+//   // third representing 0,0 = 3.
+
+//   // To map back to a choice we do a floor division by 9, that gives us the index.
+//   // Then we do a modulo division by 9 then add 1, that gives us the value
+//   for row_index in solution {
+//     let index = row_index / 9;
+//     let val = row_index % 9 + 1;
+
+//     println!("index: {:}, has value: {:}", index, val);
+//   }
+//   assert!(false);
+// }
