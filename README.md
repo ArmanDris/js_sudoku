@@ -12,8 +12,8 @@ Generating a board takes about 1.10ms.
 `rs_lib/src/algorithm_x.rs`'s `launch_algorithm_x` function generates a Sudoku
 board using Donald Knuth's Algorithm X. It does this by converting the board
 into an absolute cover problem, solving the abolute cover problem, and then 
-converting the solution back into a Sudoku board. Generating a board takes about 
-112.547ms to generate a board with this method.
+converting the solution back into a Sudoku board. Generating a board with this
+method takes about 112.547ms.
 
 ### Quickstart
 
