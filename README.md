@@ -2,17 +2,32 @@
 
 This is a jsr package to create and solve sudoku boards.
 
-### Quickstart
-Running `main.ts` will use a depth first search algorithm 
-with pruning to generate a random solved sudoku board. 
+### Deno implementation:
 
+`dfs_prune.ts`'s `dfs_prune` function will generate `stop_number` board(s).
+Generating a board takes about 1.10ms.
+
+### Rust implementation:
+
+`rs_lib/src/algorithm_x.rs`'s `launch_algorithm_x` function generates a Sudoku
+board using Donald Knuth's Algorithm X. It does this by converting the board
+into an absolute cover problem, and then solving the abolute cover problem and
+converts the solution back into a Sudoku board. Generating a board takes about 
+112.547ms to generate a board with this method.
+
+### Quickstart
+
+Running the tests will give a quick overview of the important components for
+generating a Sudoku board.
+
+#### Deno tests
 ```js
-deno main.ts
+deno test
 ```
 
-### ToDo:  
-Add dancing links algorithm to solve sudoku boards as 
-efficiently as possible & add functions to both dancing 
-link and dfs_prune that generate valuid sudoku boards, 
-not just solutions.
+#### Rust tests
+```rs
+cd rs_lib
+cargo test
+````
 

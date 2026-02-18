@@ -902,7 +902,7 @@ fn test_algorithm_x() {
   assert_eq!(zero_exists, false);
 }
 
-// Below will run 10 benchmarks
+// // Below will run 10 benchmarks
 // #[test]
 // fn test_arm() {
 //   for _index in 0..10 {
