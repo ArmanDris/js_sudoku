@@ -5,7 +5,7 @@ use std::collections::HashSet;
 fn on_an_empty_board_it_returns_the_correct_constraints() {
   let board = Board::new();
 
-  let mut constraint_row = [false; 323];
+  let mut constraint_row = [false; 324];
   fill_row_constraints(&board, &mut constraint_row);
 
   let all_false = constraint_row
@@ -23,7 +23,7 @@ fn correctly_resolves_first_row() {
   board.set(2, 0, 3);
   board.set(3, 0, 4);
 
-  let mut constraint_row = [false; 323];
+  let mut constraint_row = [false; 324];
   fill_row_constraints(&board, &mut constraint_row);
 
   let first_four_true = &constraint_row[0..4]
@@ -50,7 +50,7 @@ fn correctly_resolves_two_rows() {
   board.set(2, 5, 5);
   board.set(3, 5, 8);
 
-  let mut constraint_row = [false; 323];
+  let mut constraint_row = [false; 324];
   fill_row_constraints(&board, &mut constraint_row);
 
   // fourth row will be from index [3*9, 4*9)
@@ -71,7 +71,7 @@ fn correctly_resolves_two_rows() {
 #[test]
 fn test_no_false_positives() {
   let board = Board::new();
-  let mut constraint_column = [false; 323];
+  let mut constraint_column = [false; 324];
   fill_column_constraints(&board, &mut constraint_column);
   let all_false = constraint_column
     .iter()
@@ -86,7 +86,7 @@ fn test_detects_first_column_constraints() {
   board.set(0, 0, 8);
   board.set(0, 8, 1);
 
-  let mut constraint_row = [false; 323];
+  let mut constraint_row = [false; 324];
   fill_column_constraints(&board, &mut constraint_row);
 
   let offset = ConstraintType::Column.get_offset();
@@ -108,7 +108,7 @@ fn test_detects_two_random_column_constraints() {
   board.set(8, 7, 6);
   board.set(8, 8, 7);
 
-  let mut column_constraints = [false; 323];
+  let mut column_constraints = [false; 324];
   fill_column_constraints(&board, &mut column_constraints);
 
   let column_two_offset = ConstraintType::Column.get_offset() + (9 * 2);
@@ -168,7 +168,7 @@ fn test_detects_sub_grid_constraints() {
   // | 3 | 9 | 9 |
 
   let top_left_offset = ConstraintType::SubGrid.get_offset();
-  let mut sub_grid_constraints = [false; 323];
+  let mut sub_grid_constraints = [false; 324];
   fill_sub_grid_constraints(&board, &mut sub_grid_constraints);
 
   let top_left_constraints =
@@ -294,7 +294,7 @@ fn test_detects_all_constraints_satisfied() {
   board.set(7, 8, 1);
   board.set(8, 8, 9);
 
-  let mut constraints_row = [false; 323];
+  let mut constraints_row = [false; 324];
   fill_row_constraints(&board, &mut constraints_row);
   fill_column_constraints(&board, &mut constraints_row);
   fill_sub_grid_constraints(&board, &mut constraints_row);
@@ -375,7 +375,7 @@ fn test_generate_constraint_table() {
 #[test]
 fn test_find_satisfying_row_scenarios() {
   // 1) No row satisfies the column → None
-  let mut ct = [[false; 323]; 729];
+  let mut ct = [[false; 324]; 729];
   let col = 137;
   let hidden = HashSet::<usize>::new();
   assert_eq!(find_satisfying_rows(&ct, &hidden, col), vec![]);
@@ -402,7 +402,7 @@ fn test_find_satisfying_row_scenarios() {
   assert_eq!(find_satisfying_rows(&ct, &hidden, col).first(), Some(&400));
 
   // 6) Boundary columns: 0 and 241
-  let mut ct2 = [[false; 323]; 729];
+  let mut ct2 = [[false; 324]; 729];
 
   ct2[5][0] = true;
   assert_eq!(
@@ -420,7 +420,7 @@ fn test_find_satisfying_row_scenarios() {
 
 #[test]
 fn test_get_conflicting_rows() {
-  const N_COLS: usize = 323;
+  const N_COLS: usize = 324;
   const N_ROWS: usize = 729;
 
   fn row_with(cols_true: &[usize]) -> [bool; N_COLS] {
@@ -519,26 +519,6 @@ fn test_pick_row() {
   assert_eq!(all, input_set);
 }
 
-// #[test]
-// fn test_fill_existence_constraints() {
-//   let mut board = Board::new();
-
-//   board.set(0, 0, 1);
-//   board.set(3, 1, 4);
-//   board.set(8, 7, 9);
-
-//   let mut constraint_row = [false; 323];
-//   fill_existence_constraints(&board, &mut constraint_row);
-
-//   // It should all be false except for index 0, 3 * 9 + 1, 8 * 9 + 7
-//   // which is: 242, 270, 321
-
-//   println!("{:?}", &constraint_row[242..323]);
-//   assert!(constraint_row[ConstraintType::Existence.get_offset() + 0]);
-//   assert!(constraint_row[ConstraintType::Existence.get_offset() + 28]);
-//   assert!(constraint_row[ConstraintType::Existence.get_offset() + 79]);
-// }
-
 #[test]
 fn test_backtracking() {
   let mut decisions: Vec<Decision> = vec![
@@ -560,7 +540,7 @@ fn test_backtracking() {
   ];
   let mut hidden_rows: HashSet<usize> =
     HashSet::from([4, 5, 6, 8, 9, 10, 13, 14, 15]);
-  let mut solution_set: Vec<usize> = vec![0, 7, 11];
+  let mut solution_set: HashSet<usize> = HashSet::from([0, 7, 11]);
 
   let (selected_row, potential_rows) =
     backtrack(&mut decisions, &mut hidden_rows, &mut solution_set);
@@ -583,7 +563,7 @@ fn test_backtracking() {
     ]
   );
   assert_eq!(hidden_rows, HashSet::from([4, 5, 6, 8, 9, 10]));
-  assert_eq!(solution_set, vec![0, 7]);
+  assert_eq!(solution_set, HashSet::from([0, 7]));
 
   let (selected_row, potential_rows) =
     backtrack(&mut decisions, &mut hidden_rows, &mut solution_set);
@@ -591,24 +571,318 @@ fn test_backtracking() {
   assert_eq!(potential_rows, vec![3, 2]);
   assert_eq!(decisions, vec![]);
   assert_eq!(hidden_rows, HashSet::new());
-  assert_eq!(solution_set, vec![]);
+  assert_eq!(solution_set, HashSet::new());
 }
 
-// #[test]
-// fn test_algorithm_x() {
-//   let solution = launch_algorithm_x();
-//   // There are 729 constraint table rows where,
-//   // the first 9 are for 0,0 with the first representing
-//   // 0,0 = 1. The second representing 0,0 = 2, and the
-//   // third representing 0,0 = 3.
+#[test]
+fn test_map_solution_set_to_board() {
+  // we want the solution set to look like this:
+  // 1 |   |   |
+  // - | - | - | -
+  //   |   |   | 4
+  // - | - | - | -
+  // 5 |   |   |
+  // - | - | - | -
+  //   |   |   | 9
+  // ie. (0, 0, 1), (3, 1, 4), (0, 2, 5), (3, 3, 9)
+  // This corresponds to constraint table rows:
+  // - 0
+  // - (9 * 9 * 1) + (9 * 3) + 4 - 1 = 111
+  // - (9 * 9 * 2) + 5 - 1 = 166
+  // - (9 * 9 * 3) + (9 * 3) + 9 - 1 = 278
+  let solution_set = HashSet::from([0, 111, 166, 278]);
+  let board = map_solution_set_to_board(&solution_set);
+  board.print_board();
+  assert!(board.get(0, 0) == 1);
+  assert!(board.get(3, 1) == 4);
+  assert!(board.get(0, 2) == 5);
+  assert!(board.get(3, 3) == 9);
 
-//   // To map back to a choice we do a floor division by 9, that gives us the index.
-//   // Then we do a modulo division by 9 then add 1, that gives us the value
-//   for row_index in solution {
-//     let index = row_index / 9;
-//     let val = row_index % 9 + 1;
+  let mut non_zero_count = 0;
 
-//     println!("index: {:}, has value: {:}", index, val);
-//   }
-//   assert!(false);
-// }
+  for row_idx in 0..9 {
+    for col_idx in 0..9 {
+      if board.get(col_idx, row_idx) != 0 {
+        non_zero_count += 1;
+      }
+    }
+  }
+
+  assert_eq!(non_zero_count, 4);
+}
+
+#[test]
+fn test_generate_initial_state() {
+  // This was tested by first running the algorithm
+  // organically through 300 000 iterations, then
+  // recording the board state and the algorithm state.
+  //
+  // If the function can generate the same algorithm state
+  // from the board state, then the function works
+
+  let mut board = Board::new();
+  // Set column 0
+  board.set(0, 0, 1);
+  board.set(0, 1, 7);
+  board.set(0, 2, 4);
+  board.set(0, 3, 2);
+  board.set(0, 4, 3);
+  board.set(0, 5, 0);
+  board.set(0, 6, 0);
+  board.set(0, 7, 0);
+  board.set(0, 8, 0);
+  // Set column 1
+  board.set(1, 0, 2);
+  board.set(1, 1, 8);
+  board.set(1, 2, 5);
+  board.set(1, 3, 1);
+  board.set(1, 4, 0);
+  board.set(1, 5, 0);
+  board.set(1, 6, 0);
+  board.set(1, 7, 0);
+  board.set(1, 8, 0);
+  // Set column 2
+  board.set(2, 0, 3);
+  board.set(2, 1, 9);
+  board.set(2, 2, 6);
+  board.set(2, 3, 4);
+  board.set(2, 4, 5);
+  board.set(2, 5, 0);
+  board.set(2, 6, 0);
+  board.set(2, 7, 0);
+  board.set(2, 8, 0);
+  // Set column 3
+  board.set(3, 0, 4);
+  board.set(3, 1, 1);
+  board.set(3, 2, 7);
+  board.set(3, 3, 3);
+  board.set(3, 4, 2);
+  board.set(3, 5, 0);
+  board.set(3, 6, 0);
+  board.set(3, 7, 0);
+  board.set(3, 8, 0);
+  // Set column 4
+  board.set(4, 0, 5);
+  board.set(4, 1, 2);
+  board.set(4, 2, 8);
+  board.set(4, 3, 6);
+  board.set(4, 4, 1);
+  board.set(4, 5, 0);
+  board.set(4, 6, 0);
+  board.set(4, 7, 0);
+  board.set(4, 8, 0);
+  // Set column 5
+  board.set(5, 0, 6);
+  board.set(5, 1, 3);
+  board.set(5, 2, 9);
+  board.set(5, 3, 5);
+  board.set(5, 4, 0);
+  board.set(5, 5, 0);
+  board.set(5, 6, 0);
+  board.set(5, 7, 0);
+  board.set(5, 8, 0);
+  // Set column 6
+  board.set(6, 0, 7);
+  board.set(6, 1, 6);
+  board.set(6, 2, 1);
+  board.set(6, 3, 9);
+  board.set(6, 4, 0);
+  board.set(6, 5, 0);
+  board.set(6, 6, 0);
+  board.set(6, 7, 0);
+  board.set(6, 8, 0);
+  // Set column 7
+  board.set(7, 0, 8);
+  board.set(7, 1, 5);
+  board.set(7, 2, 2);
+  board.set(7, 3, 7);
+  board.set(7, 4, 4);
+  board.set(7, 5, 0);
+  board.set(7, 6, 0);
+  board.set(7, 7, 0);
+  board.set(7, 8, 0);
+  // Set column 8
+  board.set(8, 0, 9);
+  board.set(8, 1, 4);
+  board.set(8, 2, 3);
+  board.set(8, 3, 8);
+  board.set(8, 4, 6);
+  board.set(8, 5, 0);
+  board.set(8, 6, 0);
+  board.set(8, 7, 0);
+  board.set(8, 8, 0);
+
+  let generated_solution_set = map_board_to_solution_set(&board);
+  assert_eq!(
+    generated_solution_set,
+    HashSet::from([
+      107, 305, 128, 360, 118, 205, 401, 236, 87, 80, 264, 226, 10, 70, 148,
+      50, 156, 140, 216, 252, 346, 97, 20, 215, 175, 30, 108, 185, 60, 272,
+      165, 322, 352, 326, 390, 292, 40, 244, 195, 284, 312, 0
+    ])
+  );
+
+  let constraint_table = generate_constraint_table().table;
+
+  let generated_hidden_rows = generated_solution_set.iter().fold(
+    HashSet::new(),
+    |mut accumulator, row_index| {
+      let conflicting_rows =
+        get_conflicting_rows(&constraint_table, &accumulator, *row_index);
+      accumulator.extend(conflicting_rows);
+      accumulator
+    },
+  );
+
+  assert_eq!(
+    generated_hidden_rows,
+    HashSet::from([
+      432, 29, 596, 278, 633, 398, 247, 492, 34, 306, 211, 338, 75, 476, 26,
+      184, 92, 196, 684, 499, 676, 577, 327, 359, 363, 697, 489, 425, 4, 361,
+      658, 228, 396, 255, 418, 378, 111, 114, 210, 671, 485, 290, 275, 529,
+      366, 11, 441, 288, 162, 267, 595, 329, 8, 274, 723, 459, 136, 251, 427,
+      235, 539, 455, 385, 367, 552, 121, 402, 315, 458, 42, 266, 39, 132, 707,
+      616, 129, 349, 380, 190, 523, 311, 382, 56, 442, 509, 405, 257, 393, 89,
+      403, 119, 634, 52, 207, 57, 695, 641, 253, 32, 546, 364, 356, 636, 443,
+      590, 53, 117, 137, 282, 212, 610, 76, 436, 220, 152, 664, 84, 454, 677,
+      516, 71, 113, 421, 462, 59, 74, 238, 553, 287, 362, 17, 482, 12, 246,
+      109, 139, 388, 19, 567, 303, 151, 90, 506, 145, 573, 570, 434, 295, 88,
+      300, 452, 342, 373, 689, 27, 314, 678, 654, 55, 383, 717, 276, 263, 431,
+      626, 45, 78, 104, 642, 54, 100, 112, 219, 103, 221, 213, 188, 245, 150,
+      583, 670, 249, 68, 391, 576, 519, 535, 258, 158, 394, 293, 384, 313, 168,
+      317, 72, 438, 386, 101, 445, 13, 110, 323, 187, 149, 631, 146, 28, 301,
+      6, 270, 357, 16, 234, 231, 600, 372, 85, 513, 155, 484, 649, 472, 153,
+      202, 254, 354, 728, 340, 637, 138, 483, 157, 669, 608, 161, 561, 681,
+      644, 243, 91, 347, 351, 343, 299, 120, 548, 397, 614, 374, 487, 550, 469,
+      515, 522, 514, 344, 83, 597, 224, 332, 166, 125, 540, 381, 467, 399, 309,
+      63, 18, 122, 471, 387, 594, 714, 480, 179, 433, 48, 556, 406, 73, 7, 289,
+      201, 651, 414, 486, 256, 404, 49, 98, 331, 533, 66, 62, 159, 222, 334,
+      426, 163, 508, 144, 675, 135, 423, 58, 698, 512, 192, 61, 281, 265, 727,
+      336, 674, 328, 1, 198, 99, 229, 408, 93, 350, 174, 134, 116, 147, 569,
+      194, 371, 102, 330, 368, 67, 232, 428, 37, 589, 2, 131, 22, 31, 79, 286,
+      241, 563, 106, 46, 164, 181, 603, 280, 44, 320, 277, 127, 718, 657, 248,
+      648, 588, 474, 337, 379, 172, 333, 646, 218, 262, 64, 607, 502, 171, 23,
+      464, 446, 369, 173, 725, 593, 587, 230, 691, 41, 496, 617, 3, 715, 279,
+      450, 395, 479, 297, 465, 204, 142, 35, 9, 495, 269, 209, 566, 712, 21,
+      400, 177, 273, 176, 160, 123, 186, 415, 82, 86, 661, 217, 214, 560, 197,
+      298, 291, 365, 650, 555, 437, 77, 407, 95, 193, 124, 51, 417, 259, 182,
+      302, 304, 668, 94, 318, 527, 261, 271, 14, 701, 199, 488, 36, 702, 283,
+      296, 451, 627, 688, 377, 621, 69, 180, 96, 237, 409, 141, 189, 169, 200,
+      310, 389, 448, 370, 466, 208, 308, 629, 545, 24, 115, 321, 565, 353, 227,
+      507, 203, 416, 647, 206, 65, 604, 335, 536, 710, 435, 15, 294, 355, 475,
+      183, 580, 392, 47, 722, 154, 191, 126, 223, 268, 239, 170, 319, 81, 260,
+      348, 242, 130, 233, 324, 250, 411, 133, 307, 325, 473, 316, 240, 358, 38,
+      43, 143, 167, 33, 708, 105, 620, 25, 285, 526, 568, 5, 178, 424, 345,
+      225, 685
+    ])
+  );
+}
+
+#[test]
+fn test_no_unnecessary_backtracks() {
+  let mut board = Board::new();
+  // Set column 0
+  board.set(0, 0, 1);
+  board.set(0, 1, 7);
+  board.set(0, 2, 4);
+  board.set(0, 3, 2);
+  board.set(0, 4, 8);
+  board.set(0, 5, 3);
+  board.set(0, 6, 6);
+  board.set(0, 7, 5);
+  board.set(0, 8, 0);
+  // Set column 1
+  board.set(1, 0, 2);
+  board.set(1, 1, 8);
+  board.set(1, 2, 5);
+  board.set(1, 3, 1);
+  board.set(1, 4, 9);
+  board.set(1, 5, 6);
+  board.set(1, 6, 7);
+  board.set(1, 7, 4);
+  board.set(1, 8, 3);
+  // Set column 2
+  board.set(2, 0, 3);
+  board.set(2, 1, 9);
+  board.set(2, 2, 6);
+  board.set(2, 3, 4);
+  board.set(2, 4, 7);
+  board.set(2, 5, 5);
+  board.set(2, 6, 1);
+  board.set(2, 7, 8);
+  board.set(2, 8, 2);
+  // Set column 3
+  board.set(3, 0, 4);
+  board.set(3, 1, 1);
+  board.set(3, 2, 7);
+  board.set(3, 3, 3);
+  board.set(3, 4, 2);
+  board.set(3, 5, 9);
+  board.set(3, 6, 8);
+  board.set(3, 7, 6);
+  board.set(3, 8, 0);
+  // Set column 4
+  board.set(4, 0, 5);
+  board.set(4, 1, 2);
+  board.set(4, 2, 8);
+  board.set(4, 3, 6);
+  board.set(4, 4, 1);
+  board.set(4, 5, 7);
+  board.set(4, 6, 9);
+  board.set(4, 7, 3);
+  board.set(4, 8, 0);
+  // Set column 5
+  board.set(5, 0, 6);
+  board.set(5, 1, 3);
+  board.set(5, 2, 9);
+  board.set(5, 3, 5);
+  board.set(5, 4, 4);
+  board.set(5, 5, 8);
+  board.set(5, 6, 2);
+  board.set(5, 7, 7);
+  board.set(5, 8, 1);
+  // Set column 6
+  board.set(6, 0, 7);
+  board.set(6, 1, 6);
+  board.set(6, 2, 1);
+  board.set(6, 3, 9);
+  board.set(6, 4, 5);
+  board.set(6, 5, 4);
+  board.set(6, 6, 3);
+  board.set(6, 7, 2);
+  board.set(6, 8, 0);
+  // Set column 7
+  board.set(7, 0, 8);
+  board.set(7, 1, 5);
+  board.set(7, 2, 2);
+  board.set(7, 3, 7);
+  board.set(7, 4, 3);
+  board.set(7, 5, 1);
+  board.set(7, 6, 4);
+  board.set(7, 7, 9);
+  board.set(7, 8, 0);
+  // Set column 8
+  board.set(8, 0, 9);
+  board.set(8, 1, 4);
+  board.set(8, 2, 3);
+  board.set(8, 3, 8);
+  board.set(8, 4, 6);
+  board.set(8, 5, 2);
+  board.set(8, 6, 5);
+  board.set(8, 7, 1);
+  board.set(8, 8, 0);
+
+  let solution = launch_algorithm_x(Some(&board));
+  assert_eq!(solution.len(), 81);
+}
+
+#[test]
+fn test_algorithm_x() {
+  let solution = launch_algorithm_x(None);
+  assert_eq!(solution.len(), 81);
+
+  // To see the solution:
+  // let board = map_solution_set_to_board(&solution);
+  // board.print_board();
+  // assert!(false);
+}
