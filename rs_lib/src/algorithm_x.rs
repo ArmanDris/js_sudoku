@@ -1,10 +1,7 @@
 use crate::board::Board;
 use core::panic;
 use rand::Rng;
-use std::{
-  collections::HashSet,
-  time::{SystemTime, UNIX_EPOCH},
-};
+use std::collections::HashSet;
 
 #[cfg(test)]
 #[path = "algorithm_x_tests.rs"]
@@ -39,8 +36,8 @@ enum ConstraintType {
 impl ConstraintType {
   fn get_offset(&self) -> usize {
     match self {
-      ConstraintType::Row => 0,     // 0-80 (81 entries)
-      ConstraintType::Column => 81, // 81-161// <- THIS IS THE BUG WE ARE OFF BY 1, THIS SHOULD BE 81!!!!
+      ConstraintType::Row => 0,
+      ConstraintType::Column => 81,
       ConstraintType::SubGrid => 162,
       ConstraintType::Existence => 243,
     }
@@ -103,7 +100,7 @@ fn fill_column_constraints(board: &Board, constraint_row: &mut [bool; 324]) {
   }
 }
 
-/// The sub grid constraints take up index 161 to 242
+/// The sub grid constraints take up index 162 to 243
 /// The first nine index'es represent whether the top
 /// left sub grid contains each number. The next
 /// nine indexes represent whether the top middle sub
@@ -266,7 +263,7 @@ fn get_conflicting_rows(
 }
 
 #[derive(Copy, Clone, Debug)]
-enum DecisionStrategy {
+pub enum DecisionStrategy {
   First,
   Random,
 }
@@ -324,6 +321,7 @@ fn backtrack(
   decisions: &mut Vec<Decision>,
   hidden_rows: &mut HashSet<usize>,
   solution_set: &mut HashSet<usize>,
+  decision_strategy: DecisionStrategy,
 ) -> (usize, Vec<usize>) {
   let mut popped_decisions = match get_last_decision(decisions) {
     Some(popped_ds) => popped_ds,
@@ -338,7 +336,6 @@ fn backtrack(
     // Remove selected row from hidden rows
     hidden_rows.remove(&decision.selected_row);
 
-    // println!("hidden rows len before extraction: {}", hidden_rows.len());
     // Unhide the rows that were hidden from this decision
     let conflicting_rows: HashSet<usize> = decision
       .rows_conflicting_with_selected_row
@@ -348,8 +345,6 @@ fn backtrack(
     let _extracted_elements: Vec<_> = hidden_rows
       .extract_if(|v| conflicting_rows.contains(v))
       .collect();
-    // println!("extracted elements: {:?}", extracted_elements);
-    // println!("hidden rows len after extraction: {}", hidden_rows.len());
   }
 
   let popped_decision = match popped_decisions.pop() {
@@ -359,7 +354,7 @@ fn backtrack(
     ),
   };
 
-  pick_row(popped_decision.potential_rows, DecisionStrategy::First)
+  pick_row(popped_decision.potential_rows, decision_strategy)
 }
 
 fn map_solution_set_to_board(solution_set: &HashSet<usize>) -> Board {
@@ -424,7 +419,10 @@ fn generate_initial_state(
   (initial_solution_set, initial_hidden_rows)
 }
 
-pub fn launch_algorithm_x(starting_board: Option<&Board>) -> HashSet<usize> {
+pub fn launch_algorithm_x(
+  starting_board: Option<&Board>,
+  decision_strategy: Option<DecisionStrategy>,
+) -> Board {
   // Convert to exact cover problem
 
   // Constraints:
@@ -432,13 +430,15 @@ pub fn launch_algorithm_x(starting_board: Option<&Board>) -> HashSet<usize> {
   //  - all columns must contain 1-9 (81)
   //  - each subgrid must contain 1-9 (81)
   //  - each cell must contain a value (81)
-
-  // 324 constraints
+  // (81 + 81 + 81 + 81) = 324 constraints
 
   // Choices:
-  //  - each cell has a choice between 1-9
+  //  - each cell can be 1-9 (9)
+  //  - there are 81 cells (81)
+  // 9 * 81 = 729 choices
 
-  // 728 choices
+  let decision_strategy = decision_strategy.unwrap_or(DecisionStrategy::Random);
+
   let constraint_table = generate_constraint_table().table;
 
   let (initial_solution_set, initial_hidden_rows) =
@@ -447,45 +447,48 @@ pub fn launch_algorithm_x(starting_board: Option<&Board>) -> HashSet<usize> {
   let mut solution_set: HashSet<usize> = initial_solution_set;
   let mut hidden_rows: HashSet<usize> = initial_hidden_rows;
 
-  // decisions is an array of tuples, where the last element in the array is the most recent decision
-  // that was made. The first element in the tuple is the row that was selected, and the second element is all
-  // the other possible rows we could have selected.
   let mut decisions: Vec<Decision> = vec![];
 
-  // let mut i = 0;
-
-  // let mut start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
   loop {
     // Step 1: Pick an unsatisifed constraint
     let unsatisfied_column_idx =
       match find_unsatisfied_constraint(&constraint_table, &solution_set) {
         Some(index) => index,
         None => {
-          return solution_set;
+          return map_solution_set_to_board(&solution_set);
         }
       };
 
     // Step 2: Get all the rows we can pick to satisfy the constraint
+    // If satisfying rows is empty:
+    //   1. Pop the last decision. If the popped decision has no
+    //      potential_rows we can select, pop another. If we pop
+    //      all decisions without finding another potential row
+    //      we could have selected. Hard fail, the board is
+    //      unsolvable.
+    //   2. Iterate through all popped decisions, remove the
+    //      selected row from the solution set, and hidden set.
+    //      Also remove each decision's conflicting rows from the
+    //      hidden rows set.
+    //   3. Select the next potential row from the popped decision
+    //   4. Calculate all the conflicting rows from the newly picked row
+    //      and return those two values as the tuple
+    //      (selected_row, possible_rows) to be turned into the next
+    //      decision. (possible rows is the calculated conflicting rows)
     let satisfying_rows = find_satisfying_rows(
       &constraint_table,
       &hidden_rows,
       unsatisfied_column_idx,
     );
 
-    // Step 2.5: Handle empty satisfying rows:
-    // If satisfying rows is empty:
-    //   1. Pop the last decision
-    //   2. Un-hide all the conflicting rows from the popped decision
-    //   3. Select the next potential row from the popped decision
-    //      from the decision (or a random one if we are using a random strategy)
-    //      ** if potential rows is empty we need to pop another decision **
-    //   4. Calculate all the conflicting rows from the newly picked row
-    //   5. Create a new decision from the leftover potential rows, the newly selected row, and the new conflicting rows
-    //   6. If satisfying rows is empty repeat process
-
     let (selected_row, possible_rows) = match satisfying_rows.is_empty() {
-      false => pick_row(satisfying_rows, DecisionStrategy::First),
-      true => backtrack(&mut decisions, &mut hidden_rows, &mut solution_set),
+      false => pick_row(satisfying_rows, decision_strategy),
+      true => backtrack(
+        &mut decisions,
+        &mut hidden_rows,
+        &mut solution_set,
+        decision_strategy,
+      ),
     };
 
     // Step 3: Add the row to the solution set
@@ -502,23 +505,6 @@ pub fn launch_algorithm_x(starting_board: Option<&Board>) -> HashSet<usize> {
       potential_rows: possible_rows,
       rows_conflicting_with_selected_row: conflicting_rows,
     };
-
-    // if i % 50_000 == 0 {
-    //   let end = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    //   println!("{}, solution set length: {:?}", i, &solution_set.len());
-    //   println!("hidden rows: {:?}", &hidden_rows);
-    //   println!("new decision: {:?}", &decision);
-    //   println!("This batch of took {:?}", (end - start));
-    //   println!("");
-    //   start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    // }
-    // if i > 150 {
-    //   println!("solution set: {:?}", &solution_set);
-    //   println!("hidden rows: {:?}", &hidden_rows);
-    //   map_solution_set_to_board(&solution_set).print_board();
-    //   return solution_set;
-    // }
-    // i += 1;
 
     decisions.push(decision);
   }

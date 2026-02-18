@@ -1,5 +1,6 @@
 use super::*;
 use std::collections::HashSet;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn on_an_empty_board_it_returns_the_correct_constraints() {
@@ -542,8 +543,12 @@ fn test_backtracking() {
     HashSet::from([4, 5, 6, 8, 9, 10, 13, 14, 15]);
   let mut solution_set: HashSet<usize> = HashSet::from([0, 7, 11]);
 
-  let (selected_row, potential_rows) =
-    backtrack(&mut decisions, &mut hidden_rows, &mut solution_set);
+  let (selected_row, potential_rows) = backtrack(
+    &mut decisions,
+    &mut hidden_rows,
+    &mut solution_set,
+    DecisionStrategy::First,
+  );
 
   assert_eq!(selected_row, 12);
   assert_eq!(potential_rows, vec![]);
@@ -565,8 +570,12 @@ fn test_backtracking() {
   assert_eq!(hidden_rows, HashSet::from([4, 5, 6, 8, 9, 10]));
   assert_eq!(solution_set, HashSet::from([0, 7]));
 
-  let (selected_row, potential_rows) =
-    backtrack(&mut decisions, &mut hidden_rows, &mut solution_set);
+  let (selected_row, potential_rows) = backtrack(
+    &mut decisions,
+    &mut hidden_rows,
+    &mut solution_set,
+    DecisionStrategy::First,
+  );
   assert_eq!(selected_row, 1);
   assert_eq!(potential_rows, vec![3, 2]);
   assert_eq!(decisions, vec![]);
@@ -614,7 +623,7 @@ fn test_map_solution_set_to_board() {
 #[test]
 fn test_generate_initial_state() {
   // This was tested by first running the algorithm
-  // organically through 300 000 iterations, then
+  // organically through 150 iterations, then
   // recording the board state and the algorithm state.
   //
   // If the function can generate the same algorithm state
@@ -872,17 +881,38 @@ fn test_no_unnecessary_backtracks() {
   board.set(8, 7, 1);
   board.set(8, 8, 0);
 
-  let solution = launch_algorithm_x(Some(&board));
-  assert_eq!(solution.len(), 81);
+  let solution = launch_algorithm_x(Some(&board), None);
+
+  let mut zero_exists = false;
+  for row_idx in 0..9 {
+    zero_exists =
+      zero_exists || solution.get_row(row_idx).iter().any(|e| e == &0);
+  }
+  assert_eq!(zero_exists, false);
 }
 
 #[test]
 fn test_algorithm_x() {
-  let solution = launch_algorithm_x(None);
-  assert_eq!(solution.len(), 81);
-
-  // To see the solution:
-  // let board = map_solution_set_to_board(&solution);
-  // board.print_board();
-  // assert!(false);
+  let solution = launch_algorithm_x(None, None);
+  let mut zero_exists = false;
+  for row_idx in 0..9 {
+    zero_exists =
+      zero_exists || solution.get_row(row_idx).iter().any(|e| e == &0);
+  }
+  assert_eq!(zero_exists, false);
 }
+
+// Below will run 10 benchmarks
+// #[test]
+// fn test_arm() {
+//   for _index in 0..10 {
+//     let start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+//     let solution = launch_algorithm_x(None, None);
+//     let end = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+//     solution.print_board();
+//     println!("This batch of took {:?}", (end - start));
+//     println!("");
+//   }
+
+//   assert!(false);
+// }
