@@ -1,10 +1,9 @@
 {
 	"name": "@arm/sudoku",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"license": "MIT",
 	"exports": {
-		"./board": "./board.ts",
-		"./dfs_prune": "./dfs_prune.ts"
+		".": "./mod.js"
 	},
 	"tasks": {
 		"dev": "deno run --watch main.ts",
