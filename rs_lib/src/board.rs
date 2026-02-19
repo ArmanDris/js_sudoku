@@ -34,16 +34,6 @@ impl Board {
   pub fn get(&self, x: usize, y: usize) -> i32 {
     self.cells[y * 9 + x]
   }
-
-  pub fn print_board(&self) {
-    for row in 0..9 {
-      let mut row_string = String::from("");
-      for cell in 0..9 {
-        row_string.push_str(&format!("| {} |", self.get(cell, row)));
-      }
-      println!("{}", row_string);
-    }
-  }
 }
 
 // cannot export these methods to wasm because js cannot respect ownership rules
@@ -62,6 +52,15 @@ impl Board {
     }
 
     column
+  }
+  pub fn print_board(&self) {
+    for row in 0..9 {
+      let mut row_string = String::from("");
+      for cell in 0..9 {
+        row_string.push_str(&format!("| {} |", self.get(cell, row)));
+      }
+      println!("{}", row_string);
+    }
   }
 }
 

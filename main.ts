@@ -1,4 +1,4 @@
-import { Board, launch_algorithm_x } from "./mod.js";
+import { Board, launch_algorithm_x } from "./mod.ts";
 
 const solved_board = launch_algorithm_x()[0];
 console.log("output of solved board:");

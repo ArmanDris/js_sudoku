@@ -18,5 +18,4 @@ export class Board {
   static from_board(board: Board): Board;
   set(x: number, y: number, value: number): void;
   get(x: number, y: number): number;
-  print_board(): void;
 }
