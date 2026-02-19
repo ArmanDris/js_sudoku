@@ -422,7 +422,8 @@ fn generate_initial_state(
 pub fn launch_algorithm_x(
   starting_board: Option<&Board>,
   decision_strategy: Option<DecisionStrategy>,
-) -> Board {
+  desired_solutions: Option<usize>,
+) -> Vec<Board> {
   // Convert to exact cover problem
 
   // Constraints:
@@ -438,6 +439,8 @@ pub fn launch_algorithm_x(
   // 9 * 81 = 729 choices
 
   let decision_strategy = decision_strategy.unwrap_or(DecisionStrategy::Random);
+  let desired_solutions = desired_solutions.unwrap_or(1);
+  let mut solutions: Vec<Board> = vec![];
 
   let constraint_table = generate_constraint_table().table;
 
@@ -455,7 +458,17 @@ pub fn launch_algorithm_x(
       match find_unsatisfied_constraint(&constraint_table, &solution_set) {
         Some(index) => index,
         None => {
-          return map_solution_set_to_board(&solution_set);
+          solutions.push(map_solution_set_to_board(&solution_set));
+          if solutions.len() >= desired_solutions {
+            return solutions;
+          }
+          backtrack(
+            &mut decisions,
+            &mut hidden_rows,
+            &mut solution_set,
+            decision_strategy,
+          );
+          find_unsatisfied_constraint(&constraint_table, &solution_set).unwrap()
         }
       };
 

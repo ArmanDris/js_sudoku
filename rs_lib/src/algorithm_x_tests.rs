@@ -1,6 +1,6 @@
 use super::*;
 use std::collections::HashSet;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 #[test]
 fn on_an_empty_board_it_returns_the_correct_constraints() {
@@ -881,7 +881,8 @@ fn test_no_unnecessary_backtracks() {
   board.set(8, 7, 1);
   board.set(8, 8, 0);
 
-  let solution = launch_algorithm_x(Some(&board), None);
+  let solutions = launch_algorithm_x(Some(&board), None, Some(1));
+  let solution = solutions.first().unwrap();
 
   let mut zero_exists = false;
   for row_idx in 0..9 {
@@ -893,7 +894,9 @@ fn test_no_unnecessary_backtracks() {
 
 #[test]
 fn test_algorithm_x() {
-  let solution = launch_algorithm_x(None, None);
+  let solutions = launch_algorithm_x(None, None, Some(1));
+  let solution = solutions.first().unwrap();
+
   let mut zero_exists = false;
   for row_idx in 0..9 {
     zero_exists =
@@ -905,14 +908,21 @@ fn test_algorithm_x() {
 // // Below will run 10 benchmarks
 // #[test]
 // fn test_arm() {
-//   for _index in 0..10 {
-//     let start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-//     let solution = launch_algorithm_x(None, None);
-//     let end = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-//     solution.print_board();
-//     println!("This batch of took {:?}", (end - start));
-//     println!("");
+//   const RUNS: usize = 10;
+
+//   let mut total = Duration::ZERO;
+
+//   for i in 0..RUNS {
+//     let start = Instant::now();
+//     let _solutions = launch_algorithm_x(None, None, Some(100));
+//     let elapsed = start.elapsed();
+
+//     println!("Run {} took {:?}", i + 1, elapsed);
+//     total += elapsed;
 //   }
+
+//   let average = total / RUNS as u32;
+//   println!("\nAverage runtime over {} runs: {:?}", RUNS, average);
 
 //   assert!(false);
 // }
