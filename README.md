@@ -12,9 +12,9 @@ Sudoku board.
  - **starting_board**: the board to begin searching from (empty board by default).
  - **decision_strategy**: whether to solve sequentially (eg. will attempt 1, then 2
    then 3, etc...) or to solve randomly (pick random numbers to fill the cells)
-   (will pick randomly by default.)
+   (random by default.)
  - **desired_solutions**: the number of solution algorithm_x should find before 
-   returning
+   returning (1 by default)
 
 
 ### Deno implementation:
