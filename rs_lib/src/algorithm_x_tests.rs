@@ -1,6 +1,5 @@
 use super::*;
 use std::collections::HashSet;
-use std::time::{Duration, Instant};
 
 #[test]
 fn on_an_empty_board_it_returns_the_correct_constraints() {
@@ -881,7 +880,7 @@ fn test_no_unnecessary_backtracks() {
   board.set(8, 7, 1);
   board.set(8, 8, 0);
 
-  let solutions = launch_algorithm_x(Some(&board), None, Some(1));
+  let solutions = launch_algorithm_x(Some(board), None, Some(1));
   let solution = solutions.first().unwrap();
 
   let mut zero_exists = false;

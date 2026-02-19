@@ -23,7 +23,6 @@ impl Board {
     Self::default()
   }
 
-  #[wasm_bindgen(constructor)]
   pub fn from_board(board: &Board) -> Self {
     Self { cells: board.cells }
   }

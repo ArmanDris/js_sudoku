@@ -2,6 +2,7 @@ use crate::board::Board;
 use core::panic;
 use rand::Rng;
 use std::collections::HashSet;
+use wasm_bindgen::prelude::*;
 
 #[cfg(test)]
 #[path = "algorithm_x_tests.rs"]
@@ -262,6 +263,7 @@ fn get_conflicting_rows(
   conflicting_rows
 }
 
+#[wasm_bindgen]
 #[derive(Copy, Clone, Debug)]
 pub enum DecisionStrategy {
   First,
@@ -400,11 +402,11 @@ fn map_board_to_solution_set(board: &Board) -> HashSet<usize> {
 }
 
 fn generate_initial_state(
-  board: Option<&Board>,
+  board: Option<Board>,
   constraint_table: &[[bool; 324]; 729],
 ) -> (HashSet<usize>, HashSet<usize>) {
   let initial_solution_set = match board {
-    Some(board) => map_board_to_solution_set(board),
+    Some(board) => map_board_to_solution_set(&board),
     None => HashSet::new(),
   };
   let initial_hidden_rows = initial_solution_set.iter().fold(
@@ -419,8 +421,9 @@ fn generate_initial_state(
   (initial_solution_set, initial_hidden_rows)
 }
 
+#[wasm_bindgen]
 pub fn launch_algorithm_x(
-  starting_board: Option<&Board>,
+  starting_board: Option<Board>,
   decision_strategy: Option<DecisionStrategy>,
   desired_solutions: Option<usize>,
 ) -> Vec<Board> {

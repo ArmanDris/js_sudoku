@@ -1,4 +1,6 @@
-import { add, Board } from "./lib/rs_lib.js";
+import { add, Board, launch_algorithm_x } from "./lib/rs_lib.js";
+
+export { Board, launch_algorithm_x };
 
 // adds
 console.log(add(1, 1));
