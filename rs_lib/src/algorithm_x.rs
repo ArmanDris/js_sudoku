@@ -8,8 +8,8 @@ use wasm_bindgen::prelude::*;
 #[path = "algorithm_x_tests.rs"]
 mod algorithm_x_tests;
 
-struct ConstraintTable {
-  table: [[bool; 324]; 729],
+pub struct ConstraintTable {
+  pub table: [[bool; 324]; 729],
 }
 
 impl Default for ConstraintTable {
@@ -165,7 +165,7 @@ pub fn fill_constraint_table_row(board: &Board, row: &mut [bool; 324]) {
   fill_existence_constraints(board, row);
 }
 
-fn generate_constraint_table() -> ConstraintTable {
+pub fn generate_constraint_table() -> ConstraintTable {
   let mut ct = ConstraintTable::default();
 
   let mut current_constraint_row = 0;
