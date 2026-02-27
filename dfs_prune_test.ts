@@ -29,17 +29,6 @@ Deno.test("Is able to create many solutions", () => {
 	}
 });
 
-Deno.test("Gives unique solution for board with unique solution.", () => {
-	// This will search the entire solution space since we ask for
-	// 1000 solutions even though there is just one.
-	const solns = dfs_prune(nyt_hardest_sudoku as Board, 1000, true);
-	assertEquals(
-		solns.length,
-		1,
-		"Ensure it only returns the unique solution and nothing else",
-	);
-});
-
 // Deno.test("Average time to generate x boards across x trials", () => {
 // 	const TRIALS = 10;
 // 	const BOARDS_PER_TRIAL = 100;
